@@ -1,0 +1,217 @@
+[gd_scene load_steps=4 format=3 uid="uid://dual_scale_main"]
+
+[ext_resource type="Script" path="res://scripts/game_root.gd" id="1_root"]
+[ext_resource type="Script" path="res://scripts/camera_lod.gd" id="2_cam"]
+[ext_resource type="Script" path="res://scripts/hex_map_view.gd" id="3_map"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_root")
+
+[node name="HexMapView" type="Node2D" parent="."]
+script = ExtResource("3_map")
+
+[node name="Labels" type="Node2D" parent="HexMapView"]
+
+[node name="CameraLod" type="Camera2D" parent="."]
+position = Vector2(200, 180)
+script = ExtResource("2_cam")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="TopBar" type="Panel" parent="HUD"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 52.0
+grow_horizontal = 2
+
+[node name="DayLabel" type="Label" parent="HUD/TopBar"]
+offset_left = 12.0
+offset_top = 14.0
+offset_right = 100.0
+offset_bottom = 40.0
+text = "第 1 天"
+
+[node name="ResLabel" type="Label" parent="HUD/TopBar"]
+offset_left = 110.0
+offset_top = 14.0
+offset_right = 300.0
+offset_bottom = 40.0
+text = "粮 0 · 金 0"
+
+[node name="LodLabel" type="Label" parent="HUD/TopBar"]
+offset_left = 310.0
+offset_top = 14.0
+offset_right = 500.0
+offset_bottom = 40.0
+text = "LOD MACRO"
+
+[node name="TurnLabel" type="Label" parent="HUD/TopBar"]
+offset_left = 510.0
+offset_top = 14.0
+offset_right = 800.0
+offset_bottom = 40.0
+text = "宏观"
+
+[node name="BtnPause" type="Button" parent="HUD/TopBar"]
+offset_left = 820.0
+offset_top = 10.0
+offset_right = 870.0
+offset_bottom = 42.0
+text = "暂停"
+
+[node name="Btn1x" type="Button" parent="HUD/TopBar"]
+offset_left = 878.0
+offset_top = 10.0
+offset_right = 918.0
+offset_bottom = 42.0
+text = "1x"
+
+[node name="Btn2x" type="Button" parent="HUD/TopBar"]
+offset_left = 926.0
+offset_top = 10.0
+offset_right = 966.0
+offset_bottom = 42.0
+text = "2x"
+
+[node name="Btn3x" type="Button" parent="HUD/TopBar"]
+offset_left = 974.0
+offset_top = 10.0
+offset_right = 1014.0
+offset_bottom = 42.0
+text = "3x"
+
+[node name="BtnEndTurn" type="Button" parent="HUD/TopBar"]
+visible = false
+offset_left = 1030.0
+offset_top = 10.0
+offset_right = 1120.0
+offset_bottom = 42.0
+text = "结束回合"
+
+[node name="BtnMenu" type="Button" parent="HUD/TopBar"]
+offset_left = 1180.0
+offset_top = 10.0
+offset_right = 1260.0
+offset_bottom = 42.0
+text = "菜单"
+
+[node name="LogPanel" type="PanelContainer" parent="HUD"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -150.0
+offset_right = 420.0
+offset_bottom = -8.0
+grow_vertical = 0
+
+[node name="LogLabel" type="Label" parent="HUD/LogPanel"]
+custom_minimum_size = Vector2(400, 130)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "日志"
+autowrap_mode = 3
+
+[node name="Hint" type="Label" parent="HUD"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -380.0
+offset_top = -48.0
+offset_right = -12.0
+offset_bottom = -12.0
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(0.85, 0.8, 0.65, 0.85)
+text = "滚轮缩放 · 中键/WASD 平移 · Esc 菜单/设置"
+horizontal_alignment = 2
+
+[node name="PauseMenu" type="ColorRect" parent="HUD"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.03, 0.02, 0.72)
+
+[node name="Panel" type="PanelContainer" parent="HUD/PauseMenu"]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -160.0
+offset_right = 150.0
+offset_bottom = 160.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="HUD/PauseMenu/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="HUD/PauseMenu/Panel/VBox"]
+layout_mode = 2
+text = "暂停"
+horizontal_alignment = 1
+
+[node name="BtnResume" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+layout_mode = 2
+text = "继续"
+
+[node name="BtnSettings" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+layout_mode = 2
+text = "设置…"
+
+[node name="BtnSave" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+layout_mode = 2
+text = "保存"
+
+[node name="BtnLoad" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+layout_mode = 2
+text = "读取"
+
+[node name="BtnQuit" type="Button" parent="HUD/PauseMenu/Panel/VBox"]
+layout_mode = 2
+text = "退出"
+
+[node name="SettingsPanel" type="PanelContainer" parent="HUD/PauseMenu"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -210.0
+offset_right = 220.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="HUD/PauseMenu/SettingsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="HUD/PauseMenu/SettingsPanel/VBox"]
+layout_mode = 2
+text = "灵敏度设置（1–10）"
+horizontal_alignment = 1
+
+[node name="Hint" type="Label" parent="HUD/PauseMenu/SettingsPanel/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.75, 0.72, 0.62, 0.9)
+text = "即时生效，自动保存"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="HUD/PauseMenu/SettingsPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BtnBack" type="Button" parent="HUD/PauseMenu/SettingsPanel/VBox"]
+layout_mode = 2
+text = "返回"

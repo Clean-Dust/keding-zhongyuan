@@ -1,0 +1,840 @@
+{
+	"factions": [
+		{
+			"color": "#3D7A42",
+			"food": 120,
+			"gold": 80,
+			"id": "cao",
+			"is_player": true,
+			"name": "曹操"
+		},
+		{
+			"color": "#2F5E6C",
+			"food": 110,
+			"gold": 70,
+			"id": "yuan",
+			"is_player": false,
+			"name": "袁绍"
+		},
+		{
+			"color": "#C45C5C",
+			"food": 90,
+			"gold": 50,
+			"id": "dong",
+			"is_player": false,
+			"name": "董卓残部"
+		}
+	],
+	"hexes": [
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -2,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -2,
+			"r": 1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -2,
+			"r": 2,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -1,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -1,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -1,
+			"r": 1,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": -1,
+			"r": 2,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 0,
+			"r": -2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 0,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 0,
+			"r": 0,
+			"terrain": "city"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 0,
+			"r": 1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 0,
+			"r": 2,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 1,
+			"r": -2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 1,
+			"r": -1,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 1,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 1,
+			"r": 1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 2,
+			"r": -2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 2,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "chenliu",
+			"prefecture_name": "陈留",
+			"q": 2,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 3,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 3,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 3,
+			"r": 1,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 4,
+			"r": -2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 4,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 4,
+			"r": 0,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 4,
+			"r": 1,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 5,
+			"r": -3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 5,
+			"r": -2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 5,
+			"r": -1,
+			"terrain": "city"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 5,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 5,
+			"r": 1,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 6,
+			"r": -3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 6,
+			"r": -2,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "cao",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 6,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 6,
+			"r": 0,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 7,
+			"r": -3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 7,
+			"r": -2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 7,
+			"r": -1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": -1,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": -1,
+			"r": 6,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": -1,
+			"r": 7,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 0,
+			"r": 4,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 0,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 0,
+			"r": 6,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 0,
+			"r": 7,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 1,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 1,
+			"r": 4,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 1,
+			"r": 5,
+			"terrain": "city"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 1,
+			"r": 6,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 1,
+			"r": 7,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 2,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 2,
+			"r": 4,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 2,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 2,
+			"r": 6,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 3,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 3,
+			"r": 4,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 3,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 5,
+			"r": 4,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 5,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 5,
+			"r": 6,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 6,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 6,
+			"r": 4,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 6,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 6,
+			"r": 6,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 7,
+			"r": 2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 7,
+			"r": 3,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 7,
+			"r": 4,
+			"terrain": "city"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 7,
+			"r": 5,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 7,
+			"r": 6,
+			"terrain": "river"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 8,
+			"r": 2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 8,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 8,
+			"r": 4,
+			"terrain": "hill"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 8,
+			"r": 5,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 9,
+			"r": 2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 9,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 9,
+			"r": 4,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "yuan",
+			"prefecture_id": "puyang",
+			"prefecture_name": "濮阳",
+			"q": 0,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 3,
+			"r": 2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 4,
+			"r": 2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 5,
+			"r": 2,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 5,
+			"r": 3,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 4,
+			"r": 4,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "",
+			"prefecture_id": "yingchuan",
+			"prefecture_name": "颍川",
+			"q": 6,
+			"r": 1,
+			"terrain": "plain"
+		},
+		{
+			"owner_faction_id": "dong",
+			"prefecture_id": "qiao",
+			"prefecture_name": "谯",
+			"q": 6,
+			"r": 2,
+			"terrain": "plain"
+		}
+	],
+	"micro_active": false,
+	"micro_side": "",
+	"selected_unit_id": "",
+	"time": {
+		"day": 1,
+		"paused": true,
+		"speed": 0
+	},
+	"units": [
+		{
+			"attack": 12,
+			"attacked_this_turn": false,
+			"faction_id": "cao",
+			"general_name": "曹仁",
+			"hp": 40,
+			"id": "u_cao_1",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 0,
+			"r": 0,
+			"strength": 40
+		},
+		{
+			"attack": 14,
+			"attacked_this_turn": false,
+			"faction_id": "cao",
+			"general_name": "夏侯惇",
+			"hp": 35,
+			"id": "u_cao_2",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 1,
+			"r": 0,
+			"strength": 35
+		},
+		{
+			"attack": 10,
+			"attacked_this_turn": false,
+			"faction_id": "cao",
+			"general_name": "李典",
+			"hp": 30,
+			"id": "u_cao_3",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 5,
+			"r": -1,
+			"strength": 30
+		},
+		{
+			"attack": 13,
+			"attacked_this_turn": false,
+			"faction_id": "yuan",
+			"general_name": "颜良",
+			"hp": 38,
+			"id": "u_yuan_1",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 1,
+			"r": 5,
+			"strength": 38
+		},
+		{
+			"attack": 13,
+			"attacked_this_turn": false,
+			"faction_id": "yuan",
+			"general_name": "文丑",
+			"hp": 36,
+			"id": "u_yuan_2",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 2,
+			"r": 5,
+			"strength": 36
+		},
+		{
+			"attack": 9,
+			"attacked_this_turn": false,
+			"faction_id": "yuan",
+			"general_name": "淳于琼",
+			"hp": 28,
+			"id": "u_yuan_3",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 0,
+			"r": 5,
+			"strength": 28
+		},
+		{
+			"attack": 11,
+			"attacked_this_turn": false,
+			"faction_id": "dong",
+			"general_name": "李傕",
+			"hp": 32,
+			"id": "u_dong_1",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 7,
+			"r": 4,
+			"strength": 32
+		},
+		{
+			"attack": 11,
+			"attacked_this_turn": false,
+			"faction_id": "dong",
+			"general_name": "郭汜",
+			"hp": 30,
+			"id": "u_dong_2",
+			"in_contact": false,
+			"move": 2,
+			"move_points": 0,
+			"moved_this_turn": false,
+			"order_path": [],
+			"q": 6,
+			"r": 4,
+			"strength": 30
+		}
+	]
+}

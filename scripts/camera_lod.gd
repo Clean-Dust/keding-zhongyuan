@@ -1,0 +1,161 @@
+class_name CameraLod
+extends Camera2D
+## Four-tier map LOD by lod_scale (larger = more zoomed out).
+## Godot Camera2D.zoom is inverted: zoom = 1/lod_scale.
+## Pan/zoom rates come from InputSettings tiers (1–10).
+
+signal lod_changed(lod: String, lod_scale: float)
+signal view_changed
+
+## Far → near thresholds (calibrated for 160×160).
+const Z_HEX := 0.85 ## <= HEX: land/sea hex + grid
+const Z_XIAN := 2.2 ## <= XIAN: county fills
+const Z_JUN := 5.0 ## <= JUN: commandery fills
+## > Z_JUN → ZHOU (十三州)
+
+const LOD_MIN := 0.35
+const LOD_MAX := 14.0
+## Fallback wheel step if settings missing (matches tier ~7).
+const WHEEL_STEP := 0.28
+const ZOOM_SMOOTH := 18.0
+
+## Legacy aliases used by smoke / older call sites.
+const Z_MICRO := Z_HEX
+const Z_MACRO := Z_JUN
+
+const _InputSettings := preload("res://scripts/input_settings.gd")
+
+var lod_scale: float = 6.5
+var _target_lod_scale: float = 6.5
+var _last_lod: String = ""
+var _bounds: Rect2 = Rect2()
+var _settings ## InputSettings instance
+
+
+func _ready() -> void:
+	_settings = _InputSettings.instance()
+	make_current()
+	_target_lod_scale = lod_scale
+	_apply_zoom()
+	_emit_lod(true)
+	view_changed.emit()
+
+
+func set_map_bounds(rect: Rect2) -> void:
+	_bounds = rect
+	_clamp_position()
+	view_changed.emit()
+
+
+func _settings_safe():
+	if _settings == null:
+		_settings = _InputSettings.instance()
+	return _settings
+
+
+func _process(delta: float) -> void:
+	var moved := false
+	var pan := Vector2.ZERO
+	if Input.is_action_pressed("camera_pan_left"):
+		pan.x -= 1.0
+	if Input.is_action_pressed("camera_pan_right"):
+		pan.x += 1.0
+	if Input.is_action_pressed("camera_pan_up"):
+		pan.y -= 1.0
+	if Input.is_action_pressed("camera_pan_down"):
+		pan.y += 1.0
+	if pan != Vector2.ZERO:
+		var s = _settings_safe()
+		var speed: float = float(s.keyboard_base_speed()) * pow(maxf(lod_scale, LOD_MIN), float(s.keyboard_lod_exp()))
+		position += pan.normalized() * speed * delta
+		_clamp_position()
+		moved = true
+	if not is_equal_approx(lod_scale, _target_lod_scale):
+		var t := clampf(delta * ZOOM_SMOOTH, 0.0, 1.0)
+		lod_scale = lerpf(lod_scale, _target_lod_scale, t)
+		if absf(lod_scale - _target_lod_scale) < 0.002:
+			lod_scale = _target_lod_scale
+		_apply_zoom()
+		_clamp_position()
+		_emit_lod(false)
+		moved = true
+	if moved:
+		view_changed.emit()
+
+
+## Drag world units per screen pixel (settings-aware).
+func pan_factor() -> float:
+	var s = _settings_safe()
+	return pow(maxf(lod_scale, LOD_MIN), float(s.drag_lod_exp())) * float(s.drag_mul())
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed:
+		var step: float = float(_settings_safe().wheel_step())
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_nudge_zoom(-step)
+			get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_nudge_zoom(step)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+		position -= event.relative * pan_factor()
+		_clamp_position()
+		view_changed.emit()
+
+
+func _nudge_zoom(delta_scale: float) -> void:
+	_target_lod_scale = clampf(_target_lod_scale + delta_scale, LOD_MIN, LOD_MAX)
+	lod_scale = lerpf(lod_scale, _target_lod_scale, 0.55)
+	_apply_zoom()
+	_clamp_position()
+	_emit_lod(false)
+	view_changed.emit()
+
+
+func set_lod_scale(v: float) -> void:
+	lod_scale = clampf(v, LOD_MIN, LOD_MAX)
+	_target_lod_scale = lod_scale
+	_apply_zoom()
+	_clamp_position()
+	_emit_lod(false)
+	view_changed.emit()
+
+
+func _clamp_position() -> void:
+	if _bounds.size == Vector2.ZERO:
+		return
+	position.x = clampf(position.x, _bounds.position.x, _bounds.end.x)
+	position.y = clampf(position.y, _bounds.position.y, _bounds.end.y)
+
+
+func _apply_zoom() -> void:
+	var z := 1.0 / lod_scale
+	zoom = Vector2(z, z)
+
+
+func current_lod() -> String:
+	if lod_scale <= Z_HEX:
+		return "hex"
+	if lod_scale <= Z_XIAN:
+		return "xian"
+	if lod_scale <= Z_JUN:
+		return "jun"
+	return "zhou"
+
+
+func is_macro_time_allowed() -> bool:
+	## Strategic time at 州/郡 (and soft at 县); hex = micro pause.
+	var lod := current_lod()
+	return lod == "zhou" or lod == "jun" or lod == "xian"
+
+
+func is_hex_lod() -> bool:
+	return current_lod() == "hex"
+
+
+func _emit_lod(force: bool) -> void:
+	var lod := current_lod()
+	if force or lod != _last_lod:
+		_last_lod = lod
+		lod_changed.emit(lod, lod_scale)
