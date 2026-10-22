@@ -123,3 +123,7 @@ godot --headless --path . --export-release "Windows Desktop" build/克定中原.
 ## Lineage
 
 Seeded from `Clean-Dust/qunxiong` branch `cursor/dual-scale-mvp-1f99` path `dual_scale/` (coast + admin LOD + sensitivity). New work lives here.
+
+## Cloud verify
+
+Cursor GitHub App push check: 2026-10-22.
