@@ -1,117 +1,221 @@
 {
-  "meta": {
-    "tier": "zhou_jun_fills",
-    "map_w": 500,
-    "map_h": 500,
-    "bbox": {
-      "lon_min": 94.662,
-      "lon_max": 130.0,
-      "lat_min": 15.55,
-      "lat_max": 42.8
-    },
-    "jun": {
-      "layer": "CHGIS V6 v6_time_pref_pgn_utf_wgs84",
-      "year": 140,
-      "year_filter": "beg_yr≤140≤end_yr",
-      "types": [
-        "侯国",
-        "侯國",
-        "国",
-        "國",
-        "尹",
-        "属国",
-        "屬國",
-        "郡"
-      ],
-      "method": "hex_center_point_in_polygon",
-      "citation": "CHGIS, Version 6 (c) Fairbank Center / Fudan CHGS, 2016"
-    },
-    "zhou": {
-      "layer": "CHGIS V4 v4_time_prov_pgn_utf (Xian80 GK Zone 19 → WGS84)",
-      "year": 262,
-      "year_filter": "beg_yr≤262≤end_yr; TYPE_CH=州",
-      "method": "hex_center_point_in_polygon after reprojection",
-      "citation": "CHGIS, Version 4 (c) Fairbank Center / Fudan CHGS",
-      "note": "No province polygons at year 140; mid-TK 262 only has 扬州/荆州/交州 — not full 十三州."
-    },
-    "xian": {
-      "note": "No Han-era CHGIS county polygons; Thiessen/guessed 县 fills disabled."
-    },
-    "fidelity_note": "Not vector-identical — 500×500 hex (~6.9 km) assigned by whether its center lies inside a CHGIS polygon. Outside all polygons → empty.",
-    "bin": "zhou_jun_fills.bin",
-    "layout": "per cell: uint16 zhou_idx, uint16 jun_idx (LE); 0 = empty",
-    "stats": {
-      "land": 170246,
-      "water": 79754,
-      "zhou_filled": 22647,
-      "jun_filled": 24224,
-      "zhou_fill_rate_land": 0.133,
-      "jun_fill_rate_land": 0.1423,
-      "zhou_faces": 3,
-      "jun_faces": 15,
-      "zhou_units": 3,
-      "jun_units": 15,
-      "zhou_ambiguous": 0,
-      "jun_ambiguous": 0
-    }
-  },
   "stats": {
     "land": 170246,
     "water": 79754,
-    "zhou_filled": 22647,
-    "jun_filled": 24224,
-    "zhou_fill_rate_land": 0.133,
-    "jun_fill_rate_land": 0.1423,
-    "zhou_faces": 3,
-    "jun_faces": 15,
-    "zhou_units": 3,
-    "jun_units": 15,
-    "zhou_ambiguous": 0,
-    "jun_ambiguous": 0
+    "zhou_filled": 111737,
+    "jun_filled": 0,
+    "zhou_fill_rate_land": 0.6563,
+    "zhou_units": 13,
+    "jun_units": 0
   },
   "zhou_hex_counts": {
-    "扬州": 10445,
-    "荆州": 7873,
-    "交州": 4329
+    "凉州": 22716,
+    "益州": 21035,
+    "荆州": 14257,
+    "交州": 13362,
+    "扬州": 9444,
+    "幽州": 7281,
+    "并州": 6843,
+    "司隶": 5341,
+    "豫州": 3044,
+    "冀州": 2387,
+    "徐州": 2282,
+    "青州": 2249,
+    "兖州": 1496
   },
-  "jun_hex_counts": {
-    "会稽郡": 4497,
-    "豫章郡": 3765,
-    "武陵郡": 3123,
-    "南海郡": 2174,
-    "长沙郡": 1931,
-    "合浦郡": 1474,
-    "桂阳郡": 1319,
-    "丹阳郡": 1295,
-    "零陵郡": 1109,
-    "吴郡": 959,
-    "苍梧郡": 862,
-    "广陵郡": 711,
-    "下邳国": 511,
-    "东海郡": 325,
-    "彭城国": 169
+  "pixel_counts": {
+    "司隶": 152538,
+    "豫州": 85869,
+    "冀州": 68678,
+    "兖州": 42098,
+    "徐州": 65181,
+    "青州": 61790,
+    "荆州": 405352,
+    "扬州": 267984,
+    "益州": 603984,
+    "凉州": 652445,
+    "并州": 195194,
+    "幽州": 208118,
+    "交州": 373343
   },
-  "jun_roster_zhou": {
-    "东海郡": "徐州",
-    "彭城国": "徐州",
-    "下邳国": "徐州",
-    "广陵郡": "徐州",
-    "吴郡": "扬州",
-    "丹阳郡": "扬州",
-    "豫章郡": "扬州",
-    "会稽郡": "扬州",
-    "武陵郡": "荆州",
-    "长沙郡": "荆州",
-    "零陵郡": "荆州",
-    "桂阳郡": "荆州",
-    "南海郡": "交州",
-    "苍梧郡": "交州",
-    "合浦郡": "交州"
-  },
+  "missing_zhou": [],
   "inventory": {
-    "pref_pgn_year_140_faces": 15,
-    "prov_pgn_year_262_zhou_faces": 3,
-    "prov_pgn_year_140_zhou_faces": 0,
-    "county_pgn_han": "none in CHGIS V6 time series"
-  }
+    "zhou_painted_on_sinica": [
+      "司隶",
+      "豫州",
+      "冀州",
+      "兖州",
+      "徐州",
+      "青州",
+      "荆州",
+      "扬州",
+      "益州",
+      "凉州",
+      "并州",
+      "幽州",
+      "交州"
+    ],
+    "zhou_extracted": [
+      "凉州",
+      "幽州",
+      "并州",
+      "冀州",
+      "青州",
+      "兖州",
+      "司隶",
+      "徐州",
+      "豫州",
+      "益州",
+      "荆州",
+      "扬州",
+      "交州"
+    ],
+    "jun_extracted": []
+  },
+  "gaps": "jun not extracted (dotted borders too dense). Land outside painted admin / beyond distance caps stays empty.",
+  "seeds": [
+    {
+      "zhou": "司隶",
+      "ok": true,
+      "lon": 112.45,
+      "lat": 34.6,
+      "seed_xy": [
+        1546,
+        712
+      ],
+      "rdeg": 5.0
+    },
+    {
+      "zhou": "豫州",
+      "ok": true,
+      "lon": 115.5,
+      "lat": 33.5,
+      "seed_xy": [
+        1811,
+        808
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "冀州",
+      "ok": true,
+      "lon": 115.0,
+      "lat": 37.5,
+      "seed_xy": [
+        1768,
+        460
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "兖州",
+      "ok": true,
+      "lon": 116.5,
+      "lat": 35.4,
+      "seed_xy": [
+        1898,
+        643
+      ],
+      "rdeg": 4.0
+    },
+    {
+      "zhou": "徐州",
+      "ok": true,
+      "lon": 117.5,
+      "lat": 34.0,
+      "seed_xy": [
+        1985,
+        765
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "青州",
+      "ok": true,
+      "lon": 118.7,
+      "lat": 36.5,
+      "seed_xy": [
+        2089,
+        547
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "荆州",
+      "ok": true,
+      "lon": 112.0,
+      "lat": 30.0,
+      "seed_xy": [
+        1507,
+        1112
+      ],
+      "rdeg": 7.0
+    },
+    {
+      "zhou": "扬州",
+      "ok": true,
+      "lon": 119.0,
+      "lat": 30.2,
+      "seed_xy": [
+        2115,
+        1095
+      ],
+      "rdeg": 7.5
+    },
+    {
+      "zhou": "益州",
+      "ok": true,
+      "lon": 104.1,
+      "lat": 30.65,
+      "seed_xy": [
+        820,
+        1056
+      ],
+      "rdeg": 9.5
+    },
+    {
+      "zhou": "凉州",
+      "ok": true,
+      "lon": 103.5,
+      "lat": 37.5,
+      "seed_xy": [
+        768,
+        460
+      ],
+      "rdeg": 8.5
+    },
+    {
+      "zhou": "并州",
+      "ok": true,
+      "lon": 112.4,
+      "lat": 37.7,
+      "seed_xy": [
+        1541,
+        443
+      ],
+      "rdeg": 5.0
+    },
+    {
+      "zhou": "幽州",
+      "ok": true,
+      "lon": 116.8,
+      "lat": 40.0,
+      "seed_xy": [
+        1924,
+        243
+      ],
+      "rdeg": 6.5
+    },
+    {
+      "zhou": "交州",
+      "ok": true,
+      "lon": 106.0,
+      "lat": 21.1,
+      "seed_xy": [
+        985,
+        1886
+      ],
+      "rdeg": 8.0
+    }
+  ]
 }

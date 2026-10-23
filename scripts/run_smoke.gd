@@ -49,23 +49,26 @@ func _init() -> void:
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## 县 Thiessen disabled — no xian_id paint. 州/郡 from real CHGIS polygons (sparse).
+	## 县: no faces. 州: Sinica ad0262 digitize (十三州). 郡: not auto-traced (jun empty).
 	if xian_n != 0:
 		push_error("expected no 县 fills (no CHGIS county faces), got %d" % xian_n)
 		failed += 1
-	if zhou_n < 5000 or jun_n < 5000:
-		push_error("expected CHGIS 州/郡 polygon fills, zhou=%d jun=%d" % [zhou_n, jun_n])
+	if zhou_n < 50000:
+		push_error("expected Sinica-traced 十三州 fills, zhou=%d" % zhou_n)
+		failed += 1
+	if jun_n != 0:
+		push_error("expected no 郡 fills (dotted borders not auto-traced), got %d" % jun_n)
 		failed += 1
 	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
 		push_error("missing zhou_jun_fills.json / zhou_jun_fills.bin")
 		failed += 1
-	## Sample: 会稽郡 land near seat should carry jun_id; 扬州 in zhou poly.
+	## Sample: 会稽 seat land should be 扬州 (州 mode); jun stays empty.
 	var kuaiji := Hex.lonlat_to_offset(120.582, 30.002)
 	var kidx := kuaiji.y * Hex.MAP_W + kuaiji.x
 	if kidx >= 0 and kidx < ws.hexes.size():
 		var kh: Dictionary = ws.hexes[kidx]
-		if str(kh.get("jun_id", "")) != "会稽郡":
-			push_error("会稽 seat hex jun_id=%s expected 会稽郡" % kh.get("jun_id", ""))
+		if str(kh.get("jun_id", "")) != "":
+			push_error("会稽 seat hex jun_id=%s expected empty" % kh.get("jun_id", ""))
 			failed += 1
 		if str(kh.get("zhou_id", "")) != "扬州":
 			push_error("会稽 seat hex zhou_id=%s expected 扬州" % kh.get("zhou_id", ""))
@@ -269,7 +272,7 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast + CHGIS 州/郡 fills reapplied via build_blank_grid on load.
+		## Coast + Sinica 州 fills reapplied via build_blank_grid on load; jun stays empty.
 		var w2 := 0
 		var z2 := 0
 		var j2 := 0
@@ -287,8 +290,11 @@ func _init() -> void:
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if z2 < 5000 or j2 < 5000:
-			push_error("load lost CHGIS 州/郡 fills zhou=%d jun=%d" % [z2, j2])
+		if z2 < 50000:
+			push_error("load lost Sinica 州 fills zhou=%d" % z2)
+			failed += 1
+		if j2 != 0:
+			push_error("load invented jun fills=%d" % j2)
 			failed += 1
 		if x2 != 0:
 			push_error("load invented xian fills=%d" % x2)

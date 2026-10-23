@@ -2,7 +2,7 @@ class_name MapFactory
 extends RefCounted
 ## Builds 500×500 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
 ## Fixed square grid; south bbox to 象林 (docs/edge-cities-sanguo.md). Labels only at anchors.
-## Admin paint: per-hex `zhou_id` / `jun_id` from real CHGIS polygons (`zhou_jun_fills.*`).
+## Admin paint: per-hex `zhou_id` from Sinica ad0262 digitize (`zhou_jun_fills.*`); `jun_id` usually empty.
 ## 县: no CHGIS county faces for Han — `xian_id` stays empty; seats are markers only.
 ## Never loads legacy admin_zhou/jun/xian rings or admin_hex.json.
 

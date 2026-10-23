@@ -8,73 +8,196 @@
     "lat_min": 15.55,
     "lat_max": 42.8
   },
-  "jun": {
-    "layer": "CHGIS V6 v6_time_pref_pgn_utf_wgs84",
-    "year": 140,
-    "year_filter": "beg_yr≤140≤end_yr",
-    "types": [
-      "侯国",
-      "侯國",
-      "国",
-      "國",
-      "尹",
-      "属国",
-      "屬國",
-      "郡"
-    ],
-    "method": "hex_center_point_in_polygon",
-    "citation": "CHGIS, Version 6 (c) Fairbank Center / Fudan CHGS, 2016"
-  },
   "zhou": {
-    "layer": "CHGIS V4 v4_time_prov_pgn_utf (Xian80 GK Zone 19 → WGS84)",
-    "year": 262,
-    "year_filter": "beg_yr≤262≤end_yr; TYPE_CH=州",
-    "method": "hex_center_point_in_polygon after reprojection",
-    "citation": "CHGIS, Version 4 (c) Fairbank Center / Fudan CHGS",
-    "note": "No province polygons at year 140; mid-TK 262 only has 扬州/荆州/交州 — not full 十三州."
+    "source": "Sinica CCTS WMTS ad0262 raster underlay (digitized)",
+    "method": "multi_source_BFS from 13 州 seeds; barriers≈thick brown 州 borders+sea; per-州 geodesic distance caps; 凉州/益州 west clips (羌胡/发羌 empty); hex_center sample",
+    "underlay_trace": "/tmp/sinica_ad0262_z8.jpg",
+    "underlay_display": "data/sinica_ad0262_underlay.jpg",
+    "zhou_count_expected": 13,
+    "citation": "Academia Sinica CCTS — 三國歷史地圖(Sanguo) ad0262 (raster)",
+    "confidence": "medium — all 十三州 seeded and filled; borders jagged vs ink; not cadastral; peripheral 羌胡/鲜卑 beyond caps/clip stay empty"
+  },
+  "jun": {
+    "source": "none (auto)",
+    "note": "郡 dotted borders too dense/faint for reliable auto-extract on this raster; jun_id left empty. Prefer 州 mode + underlay for 郡 detail."
   },
   "xian": {
-    "note": "No Han-era CHGIS county polygons; Thiessen/guessed 县 fills disabled."
+    "note": "No Han county faces; seats remain CHGIS-only markers."
   },
-  "fidelity_note": "Not vector-identical — 500×500 hex (~6.9 km) assigned by whether its center lies inside a CHGIS polygon. Outside all polygons → empty.",
+  "fidelity_note": "Hex-center sampling of flood regions on 500×500 (~6.9 km). Not vector-identical to the painted map. Not CHGIS cadastral polygons.",
   "bin": "zhou_jun_fills.bin",
   "layout": "per cell: uint16 zhou_idx, uint16 jun_idx (LE); 0 = empty",
   "zhou_table": [
     "",
-    "扬州",
+    "司隶",
+    "豫州",
+    "冀州",
+    "兖州",
+    "徐州",
+    "青州",
     "荆州",
+    "扬州",
+    "益州",
+    "凉州",
+    "并州",
+    "幽州",
     "交州"
   ],
   "jun_table": [
-    "",
-    "东海郡",
-    "彭城国",
-    "下邳国",
-    "广陵郡",
-    "吴郡",
-    "丹阳郡",
-    "豫章郡",
-    "会稽郡",
-    "武陵郡",
-    "长沙郡",
-    "零陵郡",
-    "桂阳郡",
-    "南海郡",
-    "苍梧郡",
-    "合浦郡"
+    ""
   ],
   "stats": {
     "land": 170246,
     "water": 79754,
-    "zhou_filled": 22647,
-    "jun_filled": 24224,
-    "zhou_fill_rate_land": 0.133,
-    "jun_fill_rate_land": 0.1423,
-    "zhou_faces": 3,
-    "jun_faces": 15,
-    "zhou_units": 3,
-    "jun_units": 15,
-    "zhou_ambiguous": 0,
-    "jun_ambiguous": 0
-  }
+    "zhou_filled": 111737,
+    "jun_filled": 0,
+    "zhou_fill_rate_land": 0.6563,
+    "zhou_units": 13,
+    "jun_units": 0
+  },
+  "seeds": [
+    {
+      "zhou": "司隶",
+      "ok": true,
+      "lon": 112.45,
+      "lat": 34.6,
+      "seed_xy": [
+        1546,
+        712
+      ],
+      "rdeg": 5.0
+    },
+    {
+      "zhou": "豫州",
+      "ok": true,
+      "lon": 115.5,
+      "lat": 33.5,
+      "seed_xy": [
+        1811,
+        808
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "冀州",
+      "ok": true,
+      "lon": 115.0,
+      "lat": 37.5,
+      "seed_xy": [
+        1768,
+        460
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "兖州",
+      "ok": true,
+      "lon": 116.5,
+      "lat": 35.4,
+      "seed_xy": [
+        1898,
+        643
+      ],
+      "rdeg": 4.0
+    },
+    {
+      "zhou": "徐州",
+      "ok": true,
+      "lon": 117.5,
+      "lat": 34.0,
+      "seed_xy": [
+        1985,
+        765
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "青州",
+      "ok": true,
+      "lon": 118.7,
+      "lat": 36.5,
+      "seed_xy": [
+        2089,
+        547
+      ],
+      "rdeg": 4.5
+    },
+    {
+      "zhou": "荆州",
+      "ok": true,
+      "lon": 112.0,
+      "lat": 30.0,
+      "seed_xy": [
+        1507,
+        1112
+      ],
+      "rdeg": 7.0
+    },
+    {
+      "zhou": "扬州",
+      "ok": true,
+      "lon": 119.0,
+      "lat": 30.2,
+      "seed_xy": [
+        2115,
+        1095
+      ],
+      "rdeg": 7.5
+    },
+    {
+      "zhou": "益州",
+      "ok": true,
+      "lon": 104.1,
+      "lat": 30.65,
+      "seed_xy": [
+        820,
+        1056
+      ],
+      "rdeg": 9.5
+    },
+    {
+      "zhou": "凉州",
+      "ok": true,
+      "lon": 103.5,
+      "lat": 37.5,
+      "seed_xy": [
+        768,
+        460
+      ],
+      "rdeg": 8.5
+    },
+    {
+      "zhou": "并州",
+      "ok": true,
+      "lon": 112.4,
+      "lat": 37.7,
+      "seed_xy": [
+        1541,
+        443
+      ],
+      "rdeg": 5.0
+    },
+    {
+      "zhou": "幽州",
+      "ok": true,
+      "lon": 116.8,
+      "lat": 40.0,
+      "seed_xy": [
+        1924,
+        243
+      ],
+      "rdeg": 6.5
+    },
+    {
+      "zhou": "交州",
+      "ok": true,
+      "lon": 106.0,
+      "lat": 21.1,
+      "seed_xy": [
+        985,
+        1886
+      ],
+      "rdeg": 8.0
+    }
+  ]
 }
