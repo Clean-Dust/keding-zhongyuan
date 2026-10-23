@@ -38,9 +38,9 @@ Optional: open `project.godot` in the Godot editor and press Play.
 
 ## Display modes
 
-**州 / 郡 shapes are only unions of hexes whose `xian_id` belongs to that 州/郡** (parents from `data/counties_roster.*`). There is no separate 州/郡 ring geometry.
+**州 / 郡** paint from real CHGIS polygons (hex-center PIP on 500×500): 郡 = V6 `pref_pgn` @ **140** (sparse SE); 州 = V4 `prov_pgn` @ **262** (扬/荆/交 only). Outside polygons → empty. Unit borders where neighbor ids differ. **Not** vector-identical (~6.9 km).
 
-**县 fills** come from `data/xian_fills.*`: CHGIS V6 county seats @ **year 140** → Thiessen cells clipped to Natural Earth land → each land hex assigned by **center point-in-polygon** on the 500×500 grid. This is **not** vector-identical to continuous CHGIS geometry (~6.9 km hex fidelity). CHGIS V6 has no Han-era county polygon layer — cells are schematic neighbor extents of CHGIS seats, not cadastral. Unmatched roster counties / hexes outside matched cells stay empty. **治所** (`county_seats.json`, CHGIS-only) are markers; seats do not invent fills. Mode **地形** is land/sea green/blue as usual.
+**县**: CHGIS has no Han county faces — mode shows **治所 markers only** (CHGIS-only seats). Thiessen/`xian_fills` disabled. Mode **地形** is land/sea as usual.
 
 Retired stubs: `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json` (`unused_for_rendering`, empty — never loaded).
 

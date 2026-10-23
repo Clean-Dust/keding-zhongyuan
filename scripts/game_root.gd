@@ -256,12 +256,11 @@ func _set_display_mode(mode: String) -> void:
 		var btn: Button = _mode_buttons[k]
 		btn.set_pressed_no_signal(str(k) == mode)
 	_update_empty_admin_hint()
-	if mode != "terrain" and not map_view.has_xian_fills():
+	if mode == "xian":
 		var seats_n: int = CountiesRoster.seat_count()
-		if seats_n > 0:
-			_push_log("县范围尚未铺设；治所 %d 已标（县模式可见标签；郡/州仍为空填）" % seats_n)
-		else:
-			_push_log("县范围尚未铺设（州/郡 = 县 hex 并集；名单见 counties_roster）")
+		_push_log("县模式：治所 %d（CHGIS 无东汉县域面；不显示猜测县界）" % seats_n)
+	elif mode != "terrain" and not map_view.has_admin_fills():
+		_push_log("州/郡：当前无 CHGIS 面覆盖（东汉多边形稀疏）")
 	_refresh_hud()
 
 
@@ -269,15 +268,15 @@ func _update_empty_admin_hint() -> void:
 	var hint: Label = hud.get_node_or_null("EmptyAdminHint")
 	if hint == null:
 		return
-	var show_hint: bool = display_mode != "terrain" and not map_view.has_xian_fills()
-	hint.visible = show_hint
-	if show_hint:
-		var roster_n: int = CountiesRoster.county_count()
-		var seats_n: int = CountiesRoster.seat_count()
-		if seats_n > 0:
-			hint.text = "县范围尚未铺设（名单 %d · 治所 %d · 郡/州 = 县并集）" % [roster_n, seats_n]
-		else:
-			hint.text = "县范围尚未铺设（名单 %d 县 · 郡/州 = 县并集）" % roster_n
+	var seats_n: int = CountiesRoster.seat_count()
+	if display_mode == "xian":
+		hint.visible = true
+		hint.text = "县治所 %d · 无县域面（待 CHGIS）" % seats_n
+	elif display_mode != "terrain" and not map_view.has_admin_fills():
+		hint.visible = true
+		hint.text = "州/郡面未覆盖本区（CHGIS 东汉多边形稀疏）"
+	else:
+		hint.visible = false
 
 
 func _wire_hud() -> void:
@@ -429,10 +428,15 @@ func _refresh_hud() -> void:
 	var paused := bool(world.time.get("paused", true))
 	var mode_names := {"zhou": "州", "jun": "郡", "xian": "县", "terrain": "地形"}
 	var mode_label: String = str(mode_names.get(display_mode, display_mode))
-	var empty_admin: bool = display_mode != "terrain" and not map_view.has_xian_fills()
+	var empty_admin: bool = (
+		display_mode == "xian"
+		or (display_mode != "terrain" and not map_view.has_admin_fills())
+	)
 	if empty_admin:
-		lod_l.text = "显示 %s · 未铺设 · %s" % [
+		var tag := "治所" if display_mode == "xian" else "面稀疏"
+		lod_l.text = "显示 %s · %s · %s" % [
 			mode_label,
+			tag,
 			("暂停" if paused or speed == 0 else "%dx" % speed),
 		]
 	else:

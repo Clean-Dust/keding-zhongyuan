@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless smoke: coast, CHGIS@140 xian fills, roster, seats, tick, save/load.
+## Headless smoke: coast, CHGIS 州/郡 polygon fills, seats (no 县 faces), tick, save/load.
 
 
 func _init() -> void:
@@ -29,32 +29,52 @@ func _init() -> void:
 	var land_n := 0
 	var water_n := 0
 	var xian_n := 0
+	var zhou_n := 0
+	var jun_n := 0
 	for h in ws.hexes:
 		if str(h.get("terrain", "")) == "water":
 			water_n += 1
-			if str(h.get("xian_id", "")) != "":
-				push_error("water hex has xian_id")
+			if str(h.get("xian_id", "")) != "" or str(h.get("zhou_id", "")) != "" or str(h.get("jun_id", "")) != "":
+				push_error("water hex has admin id")
 				failed += 1
 				break
 		else:
 			land_n += 1
 			if str(h.get("xian_id", "")) != "":
 				xian_n += 1
+			if str(h.get("zhou_id", "")) != "":
+				zhou_n += 1
+			if str(h.get("jun_id", "")) != "":
+				jun_n += 1
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## CHGIS@140 hex-center fills must paint a large share of land (not empty-admin).
-	if xian_n < 50000:
-		push_error("expected CHGIS xian fills, got %d" % xian_n)
+	## 县 Thiessen disabled — no xian_id paint. 州/郡 from real CHGIS polygons (sparse).
+	if xian_n != 0:
+		push_error("expected no 县 fills (no CHGIS county faces), got %d" % xian_n)
 		failed += 1
-	if not FileAccess.file_exists("res://data/xian_fills.json") or not FileAccess.file_exists("res://data/xian_fills.bin"):
-		push_error("missing xian_fills.json / xian_fills.bin")
+	if zhou_n < 5000 or jun_n < 5000:
+		push_error("expected CHGIS 州/郡 polygon fills, zhou=%d jun=%d" % [zhou_n, jun_n])
 		failed += 1
+	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
+		push_error("missing zhou_jun_fills.json / zhou_jun_fills.bin")
+		failed += 1
+	## Sample: 会稽郡 land near seat should carry jun_id; 扬州 in zhou poly.
+	var kuaiji := Hex.lonlat_to_offset(120.582, 30.002)
+	var kidx := kuaiji.y * Hex.MAP_W + kuaiji.x
+	if kidx >= 0 and kidx < ws.hexes.size():
+		var kh: Dictionary = ws.hexes[kidx]
+		if str(kh.get("jun_id", "")) != "会稽郡":
+			push_error("会稽 seat hex jun_id=%s expected 会稽郡" % kh.get("jun_id", ""))
+			failed += 1
+		if str(kh.get("zhou_id", "")) != "扬州":
+			push_error("会稽 seat hex zhou_id=%s expected 扬州" % kh.get("zhou_id", ""))
+			failed += 1
 	var seats_n := CountiesRoster.seat_count()
 	if seats_n < 500:
 		push_error("county_seats too few: %d" % seats_n)
 		failed += 1
-	## Sample seat: 雒阳 should project near mid-north China hex and carry its xian_id fill.
+	## Sample seat: 雒阳 projects; no xian fill (north of CHGIS poly coverage).
 	var luoyang_ok := false
 	var luoyang_id := "xian:司隶/河南尹/雒阳"
 	for s_any in CountiesRoster.load_seats():
@@ -66,21 +86,19 @@ func _init() -> void:
 		luoyang_ok = true
 		var col := int(s.get("col", -1))
 		var row := int(s.get("row", -1))
-		## Rough window: eastern-central plain on 500×500 Sinica bbox.
 		if col < 200 or col > 360 or row < 80 or row > 220:
 			push_error("雒阳 seat hex unexpected (%d,%d)" % [col, row])
 			failed += 1
 		var seat_idx := row * Hex.MAP_W + col
 		if seat_idx >= 0 and seat_idx < ws.hexes.size():
 			var seat_hex: Dictionary = ws.hexes[seat_idx]
-			if str(seat_hex.get("xian_id", "")) != luoyang_id:
-				push_error("雒阳 seat hex xian_id=%s expected %s" % [seat_hex.get("xian_id", ""), luoyang_id])
+			if str(seat_hex.get("xian_id", "")) != "":
+				push_error("雒阳 should not have xian_id fill")
 				failed += 1
 		break
 	if not luoyang_ok:
 		push_error("雒阳 seat missing from county_seats.json")
 		failed += 1
-	## 州/郡 aggregate from filled 县 — sample 雒阳 parents.
 	if CountiesRoster.zhou_of(luoyang_id) != "司隶" or CountiesRoster.jun_of(luoyang_id) != "河南尹":
 		push_error("雒阳 roster parents broken")
 		failed += 1
@@ -230,24 +248,34 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast + CHGIS xian fills reapplied via build_blank_grid on load.
+		## Coast + CHGIS 州/郡 fills reapplied via build_blank_grid on load.
 		var w2 := 0
+		var z2 := 0
+		var j2 := 0
 		var x2 := 0
 		for h2 in ws2.hexes:
 			if str(h2.get("terrain", "")) == "water":
 				w2 += 1
-			elif str(h2.get("xian_id", "")) != "":
-				x2 += 1
+			else:
+				if str(h2.get("zhou_id", "")) != "":
+					z2 += 1
+				if str(h2.get("jun_id", "")) != "":
+					j2 += 1
+				if str(h2.get("xian_id", "")) != "":
+					x2 += 1
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if x2 < 50000:
-			push_error("load lost CHGIS xian fills=%d" % x2)
+		if z2 < 5000 or j2 < 5000:
+			push_error("load lost CHGIS 州/郡 fills zhou=%d jun=%d" % [z2, j2])
+			failed += 1
+		if x2 != 0:
+			push_error("load invented xian fills=%d" % x2)
 			failed += 1
 	print(
-		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d xian_fills=%d roster=%d seats=%d z_hex=%.2f" % [
+		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d zhou_fills=%d jun_fills=%d xian_fills=%d roster=%d seats=%d z_hex=%.2f" % [
 			1 if failed == 0 else 0, failed, ws.hexes.size(), ws.map_w, ws.map_h,
-			land_n, water_n, xian_n, CountiesRoster.county_count(), seats_n, CameraLod.Z_HEX,
+			land_n, water_n, zhou_n, jun_n, xian_n, CountiesRoster.county_count(), seats_n, CameraLod.Z_HEX,
 		]
 	)
 	call_deferred("quit", 1 if failed else 0)

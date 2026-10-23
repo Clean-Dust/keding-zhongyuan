@@ -20,14 +20,15 @@ county_seats.json / county_seats_report.json  ← 治所 points (CHGIS-only)
   Runtime: markers in 州/郡/县; labels in 县 mode. Does NOT invent fills.
   Unmatched counties stay out of seats file (see report). No invented coords.
 
-xian_fills.json / xian_fills.bin / xian_fills_report.json  ← 县 hex fills
-  CHGIS V6 county points @ year 140 → Thiessen cells clipped to NE land →
-  each land hex assigned by center point-in-polygon (500×500; not vector-identical).
-  CHGIS has no Han-era county polygon layer; cells are schematic neighbor extents.
-  Roster link via county_seats.chgis_sys_id. Unmatched / outside → empty.
-  Bake: tools/bake_xian_fills.py --cnty … --ne …
-  Runtime: MapFactory.apply_xian_fills. Saves do not sparse-store every fill
-  (reapplied on load via build_blank_grid).
+zhou_jun_fills.json / zhou_jun_fills.bin / zhou_jun_fills_report.json
+  州: CHGIS V4 prov polygons @ year 262 (扬/荆/交 only; none @140), reprojected WGS84.
+  郡: CHGIS V6 pref polygons @ year 140 (≈15 SE 郡/国). Hex-center PIP; outside → empty.
+  Bake: tools/bake_zhou_jun_fills.py --pref-pgn … --prov-pgn … --prov-prj …
+  Runtime: MapFactory.apply_zhou_jun_fills → hex.zhou_id / hex.jun_id.
+
+xian_fills.json / xian_fills.bin
+  DISABLED — no Han county polygons in CHGIS; 县 mode = seats only (no guessed 县界).
+
 
 admin_zhou.json / admin_jun.json / admin_xian.json / admin_hex.json
   RETIRED stubs (unused_for_rendering=true, empty features / no PIP arrays).

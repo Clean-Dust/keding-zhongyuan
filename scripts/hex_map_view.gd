@@ -1,7 +1,7 @@
 extends Node2D
 ## Hex-based map draw. Display mode (州/郡/县/地形) is UI-driven — not zoom.
-## 县 paint from CHGIS@140 hex-center fills (xian_id on hex); no legacy admin_hex.json.
-## 州/郡/县 modes = unions of hexes sharing xian_id (parents via counties_roster).
+## 州/郡: CHGIS polygon hex-center fills (zhou_id / jun_id); unit borders between ids.
+## 县: seats only — no Han county faces in CHGIS (xian_id stays empty).
 
 const HEX_SIZE := 36.0
 const HEX_DRAW := HEX_SIZE * 0.96
@@ -10,12 +10,12 @@ const PLAINS_GREEN := Color(0.32, 0.48, 0.30)
 const SEA_BLUE := Color(0.20, 0.40, 0.58)
 const CITY_GREEN := Color(0.38, 0.52, 0.34)
 const UNASSIGNED_GRAY := Color(0.52, 0.52, 0.50)
-const ADMIN_BORDER := Color(0.22, 0.22, 0.20, 0.45)
+const ADMIN_BORDER := Color(0.12, 0.10, 0.08, 0.85)
 const ADMIN_NAME := Color(0.10, 0.10, 0.08, 0.92)
 const HINT_COLOR := Color(0.12, 0.12, 0.10, 0.88)
 const SEAT_MARK := Color(0.15, 0.12, 0.08, 0.9)
 const DRAW_MAP_MARKERS := false
-const EMPTY_ADMIN_HINT := "县范围尚未铺设"
+const EMPTY_ADMIN_HINT := "州/郡范围未覆盖（CHGIS 面稀疏）；县界暂无"
 
 ## Display modes (buttons): zhou | jun | xian | terrain
 const MODE_ZHOU := "zhou"
@@ -44,8 +44,8 @@ var _redraw_scheduled: bool = false
 
 ## Label entries for current admin mode: {name, pos: Vector2}
 var _admin_labels: Array = []
-## True when at least one land hex has a non-empty xian_id.
-var _has_xian_fills: bool = false
+## True when current mode has something to paint (州/郡 polygon fills; never 县).
+var _has_admin_fills: bool = false
 ## Optional seat marks from data/county_seats.json (pixel positions).
 var _seat_marks: Array = []
 
@@ -92,8 +92,13 @@ func set_lod(_new_lod: String) -> void:
 	pass
 
 
+## True when 州/郡 polygon fills exist (县 mode always false — seats only).
 func has_xian_fills() -> bool:
-	return _has_xian_fills
+	return _has_admin_fills
+
+
+func has_admin_fills() -> bool:
+	return _has_admin_fills
 
 
 func set_hover(cell: Vector2i) -> void:
@@ -170,16 +175,20 @@ func _rebuild_highlight_set() -> void:
 		_highlight_set[Hex.key(c.x, c.y)] = true
 
 
-func _xian_id_of(h: Dictionary) -> String:
-	return str(h.get("xian_id", ""))
-
-
 func _admin_id_of(h: Dictionary) -> String:
-	return CountiesRoster.admin_key(display_mode, _xian_id_of(h))
+	match display_mode:
+		MODE_ZHOU:
+			return str(h.get("zhou_id", ""))
+		MODE_JUN:
+			return str(h.get("jun_id", ""))
+		MODE_XIAN:
+			return "" ## no county faces
+		_:
+			return ""
 
 
 func _admin_name_of(h: Dictionary) -> String:
-	return CountiesRoster.admin_label(display_mode, _xian_id_of(h))
+	return _admin_id_of(h)
 
 
 func _tint_for_admin_id(aid: String) -> Color:
@@ -206,8 +215,10 @@ func _color_for_hex(h: Dictionary) -> Color:
 		return SEA_BLUE
 	if display_mode == MODE_TERRAIN:
 		return _terrain_color(h)
-	## Roster may exist, but zero hexes filled → flat unpainted gray (not Voronoi / not 地形 green).
-	if not _has_xian_fills:
+	## 县 mode: no county faces — gray land + seat marks only.
+	if display_mode == MODE_XIAN:
+		return UNASSIGNED_GRAY
+	if not _has_admin_fills:
 		return UNASSIGNED_GRAY
 	var aid := _admin_id_of(h)
 	if aid == "":
@@ -218,17 +229,18 @@ func _color_for_hex(h: Dictionary) -> Color:
 func _rebuild_color_caches() -> void:
 	if world == null:
 		return
-	_has_xian_fills = false
-	for h in world.hexes:
-		if str(h.get("terrain", "")) == "water":
-			continue
-		if _xian_id_of(h) != "":
-			_has_xian_fills = true
-			break
+	_has_admin_fills = false
+	if display_mode == MODE_ZHOU or display_mode == MODE_JUN:
+		for h in world.hexes:
+			if str(h.get("terrain", "")) == "water":
+				continue
+			if _admin_id_of(h) != "":
+				_has_admin_fills = true
+				break
 	var n := world.hexes.size()
 	_fill_hex.resize(n)
-	## Fast path: empty admin + terrain modes avoid per-hex admin tint work on 500².
-	if display_mode == MODE_TERRAIN or not _has_xian_fills:
+	## Fast path: empty admin + terrain + 县 modes avoid per-hex admin tint work on 500².
+	if display_mode == MODE_TERRAIN or display_mode == MODE_XIAN or not _has_admin_fills:
 		for i in n:
 			var h2: Dictionary = world.hexes[i]
 			if str(h2.get("terrain", "")) == "water":
@@ -244,9 +256,9 @@ func _rebuild_color_caches() -> void:
 
 func _rebuild_admin_labels() -> void:
 	_admin_labels.clear()
-	if world == null or display_mode == MODE_TERRAIN or not _has_xian_fills:
+	if world == null or display_mode == MODE_TERRAIN or display_mode == MODE_XIAN or not _has_admin_fills:
 		return
-	## Accumulate pixel centroids per admin id (union of member 县 hexes).
+	## Accumulate pixel centroids per 州/郡 id.
 	var acc: Dictionary = {} ## id -> {name, sum: Vector2, n: int}
 	for h in world.hexes:
 		if str(h.get("terrain", "")) == "water":
@@ -303,7 +315,7 @@ func _rebuild_pref_labels() -> void:
 	## When no 县 hexes are filled, hide anchors in admin modes so empty state is obvious.
 	if display_mode == MODE_JUN or display_mode == MODE_XIAN:
 		return
-	if display_mode != MODE_TERRAIN and not _has_xian_fills:
+	if display_mode != MODE_TERRAIN and not _has_admin_fills:
 		return
 	var s := _current_lod_scale()
 	for h in world.hexes:
@@ -387,14 +399,18 @@ func _draw() -> void:
 
 func _draw_empty_admin_hint(vis: Rect2) -> void:
 	## World-space backup; primary cue is HUD EmptyAdminHint (screen-fixed).
-	if display_mode == MODE_TERRAIN or _has_xian_fills:
+	## 县: always seats-only (no county faces). 州/郡: hint only if bake empty.
+	if display_mode == MODE_TERRAIN:
+		return
+	if display_mode != MODE_XIAN and _has_admin_fills:
 		return
 	var font_size := _world_font_px(22.0)
 	var center := vis.get_center()
+	var msg := "县治所标记；县界待 CHGIS 县域面" if display_mode == MODE_XIAN else EMPTY_ADMIN_HINT
 	draw_string(
 		ThemeDB.fallback_font,
 		center + Vector2(-float(font_size) * 3.5, float(font_size) * 0.35),
-		EMPTY_ADMIN_HINT,
+		msg,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
 		font_size,
@@ -474,11 +490,11 @@ func _draw_hex_layer(vis: Rect2) -> void:
 	var vis_t := vis.position.y
 	var vis_b := vis.end.y
 	var lod_s := _current_lod_scale()
-	## 500² mitigations: far zoom → rects, no borders; skip sea (underlay already blue);
+	## 500² mitigations: far zoom → rects; skip sea (underlay already blue);
 	## when framed full-map would draw ~250k cells, step the grid.
+	## 州/郡: draw borders only on edges where neighbor admin id differs.
 	var use_rects := lod_s >= 2.5
-	var show_borders := lod_s < 2.5
-	var border_w := 1.2 if display_mode == MODE_TERRAIN else 0.7
+	var border_w := 1.6 if display_mode == MODE_ZHOU else 1.2
 	var cols_v := bounds.z - bounds.x + 1
 	var rows_v := bounds.w - bounds.y + 1
 	var vis_cells := cols_v * rows_v
@@ -489,6 +505,11 @@ func _draw_hex_layer(vis: Rect2) -> void:
 		step = 3
 	if vis_cells > 160000:
 		step = 4
+	## Unit borders need full resolution — skip when stepped / far zoom.
+	var show_unit_borders := (
+		step == 1 and lod_s < 2.5 and _has_admin_fills
+		and (display_mode == MODE_ZHOU or display_mode == MODE_JUN)
+	)
 	var cell_w := sx * float(step)
 	var cell_h := sy * float(step)
 	for row in range(bounds.y, bounds.w + 1, step):
@@ -518,8 +539,60 @@ func _draw_hex_layer(vis: Rect2) -> void:
 				draw_rect(Rect2(center.x - cell_w * 0.5, center.y - cell_h * 0.5, cell_w, cell_h), fill)
 			else:
 				_draw_hex_fill(center, fill)
-				if show_borders:
-					_draw_hex_border(center, border_w)
+				if show_unit_borders:
+					_draw_unit_borders(col, row, center, border_w)
+				elif display_mode == MODE_TERRAIN:
+					_draw_hex_border(center, 1.0)
+
+
+## Draw only edges shared with a different 州/郡 (or empty / water).
+func _draw_unit_borders(col: int, row: int, center: Vector2, width: float) -> void:
+	if world == null:
+		return
+	var idx := row * world.map_w + col
+	if idx < 0 or idx >= world.hexes.size():
+		return
+	var self_id := _admin_id_of(world.hexes[idx])
+	if self_id == "":
+		return
+	## Pointy-top even-r edge order matches Hex.hex_corners (i=0 at -30°).
+	## Neighbor offsets in even-r for edges 0..5:
+	var nbrs: Array[Vector2i] = _even_r_edge_neighbors(col, row)
+	for i in 6:
+		var n: Vector2i = nbrs[i]
+		var other := ""
+		if Hex.in_map_offset(n.x, n.y, world.map_w, world.map_h):
+			var nidx := n.y * world.map_w + n.x
+			var nh: Dictionary = world.hexes[nidx]
+			if str(nh.get("terrain", "")) != "water":
+				other = _admin_id_of(nh)
+		if other == self_id:
+			continue
+		var a: Vector2 = center + _corner_off[i]
+		var b: Vector2 = center + _corner_off[(i + 1) % 6]
+		draw_line(a, b, ADMIN_BORDER, width, false)
+
+
+func _even_r_edge_neighbors(col: int, row: int) -> Array[Vector2i]:
+	## Neighbors for pointy-top corners starting at -30° (E, NE, NW, W, SW, SE).
+	var odd := (row & 1) == 1
+	if odd:
+		return [
+			Vector2i(col + 1, row),
+			Vector2i(col + 1, row - 1),
+			Vector2i(col, row - 1),
+			Vector2i(col - 1, row),
+			Vector2i(col, row + 1),
+			Vector2i(col + 1, row + 1),
+		]
+	return [
+		Vector2i(col + 1, row),
+		Vector2i(col, row - 1),
+		Vector2i(col - 1, row - 1),
+		Vector2i(col - 1, row),
+		Vector2i(col - 1, row + 1),
+		Vector2i(col, row + 1),
+	]
 
 
 ## Returns Vector4i(min_col, min_row, max_col, max_row) — uses x,y,z,w.
