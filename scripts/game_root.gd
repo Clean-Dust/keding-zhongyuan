@@ -257,7 +257,11 @@ func _set_display_mode(mode: String) -> void:
 		btn.set_pressed_no_signal(str(k) == mode)
 	_update_empty_admin_hint()
 	if mode != "terrain" and not map_view.has_xian_fills():
-		_push_log("县范围尚未铺设（州/郡 = 县 hex 并集；名单见 counties_roster）")
+		var seats_n: int = CountiesRoster.seat_count()
+		if seats_n > 0:
+			_push_log("县范围尚未铺设；治所 %d 已标（县模式可见标签；郡/州仍为空填）" % seats_n)
+		else:
+			_push_log("县范围尚未铺设（州/郡 = 县 hex 并集；名单见 counties_roster）")
 	_refresh_hud()
 
 
@@ -269,7 +273,11 @@ func _update_empty_admin_hint() -> void:
 	hint.visible = show_hint
 	if show_hint:
 		var roster_n: int = CountiesRoster.county_count()
-		hint.text = "县范围尚未铺设（名单 %d 县 · 郡/州 = 县并集）" % roster_n
+		var seats_n: int = CountiesRoster.seat_count()
+		if seats_n > 0:
+			hint.text = "县范围尚未铺设（名单 %d · 治所 %d · 郡/州 = 县并集）" % [roster_n, seats_n]
+		else:
+			hint.text = "县范围尚未铺设（名单 %d 县 · 郡/州 = 县并集）" % roster_n
 
 
 func _wire_hud() -> void:

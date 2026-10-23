@@ -82,6 +82,7 @@ func set_display_mode(mode: String) -> void:
 	display_mode = mode
 	_rebuild_color_caches()
 	_rebuild_admin_labels()
+	_rebuild_seat_marks()
 	_rebuild_pref_labels()
 	queue_redraw()
 
@@ -263,13 +264,19 @@ func _rebuild_admin_labels() -> void:
 
 func _rebuild_seat_marks() -> void:
 	_seat_marks.clear()
+	## Seats are markers only — never paint xian_id / 郡/州 fills from seats.
 	for row_any in CountiesRoster.load_seats():
 		if typeof(row_any) != TYPE_DICTIONARY:
 			continue
 		var row: Dictionary = row_any
-		if not row.has("lon") or not row.has("lat"):
+		var px: Vector2
+		if row.has("col") and row.has("row"):
+			var ax := Hex.offset_to_axial(int(row.col), int(row.row))
+			px = Hex.to_pixel(ax, HEX_SIZE)
+		elif row.has("lon") and row.has("lat"):
+			px = Hex.lonlat_to_pixel(float(row.lon), float(row.lat), HEX_SIZE)
+		else:
 			continue
-		var px := Hex.lonlat_to_pixel(float(row.lon), float(row.lat), HEX_SIZE)
 		var nm := str(row.get("name", ""))
 		if nm == "" and str(row.get("xian_id", "")) != "":
 			nm = CountiesRoster.name_of(str(row.xian_id))
@@ -385,25 +392,34 @@ func _draw_empty_admin_hint(vis: Rect2) -> void:
 
 
 func _draw_seat_marks(vis: Rect2) -> void:
+	## 县 mode: markers + labels. 州/郡: markers only (no territory from seats).
 	if display_mode == MODE_TERRAIN or _seat_marks.is_empty():
 		return
-	var font_size := _world_font_px(14.0)
+	var show_labels := display_mode == MODE_XIAN
+	var font_size := _world_font_px(13.0)
+	var label_budget := 160
+	var named := 0
+	var mark_r := HEX_SIZE * (0.14 if display_mode == MODE_XIAN else 0.10)
 	for seat in _seat_marks:
 		var pos: Vector2 = seat.pos
 		if not vis.has_point(pos):
 			continue
-		draw_circle(pos, HEX_SIZE * 0.12, SEAT_MARK)
+		draw_circle(pos, mark_r, SEAT_MARK)
+		if not show_labels:
+			continue
 		var nm: String = str(seat.get("name", ""))
-		if nm != "":
-			draw_string(
-				ThemeDB.fallback_font,
-				pos + Vector2(6, 4),
-				nm,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				-1,
-				font_size,
-				ADMIN_NAME
-			)
+		if nm == "" or named >= label_budget:
+			continue
+		named += 1
+		draw_string(
+			ThemeDB.fallback_font,
+			pos + Vector2(6, 4),
+			nm,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			font_size,
+			ADMIN_NAME
+		)
 
 
 func _draw_admin_names(vis: Rect2) -> void:

@@ -4,7 +4,7 @@ extends RefCounted
 ## Geometry never comes from here — only ids/names for paint after hand-filled xian_id.
 
 const PATH := "res://data/counties_roster.json"
-## Optional future seats file: [{xian_id, lon, lat, name?}, ...] — none yet.
+## Seats file: {meta, seats:[{xian_id, lon, lat, col, row, ...}]} or legacy bare array.
 const SEATS_PATH := "res://data/county_seats.json"
 
 static var _by_id: Dictionary = {} ## xian_id -> {id, name, zhou, jun, notes?}
@@ -99,6 +99,7 @@ static func county_count() -> int:
 
 
 ## Optional seats for admin modes when ranges are not yet painted.
+## Does not set hex xian_id — seats never invent 县/郡/州 territory paint.
 static func load_seats() -> Array:
 	if _seats_loaded:
 		return _seats
@@ -107,10 +108,20 @@ static func load_seats() -> Array:
 	if not FileAccess.file_exists(SEATS_PATH):
 		return _seats
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(SEATS_PATH))
-	if typeof(data) != TYPE_ARRAY:
-		return _seats
-	for row_any in data:
+	var rows: Array = []
+	if typeof(data) == TYPE_ARRAY:
+		rows = data
+	elif typeof(data) == TYPE_DICTIONARY:
+		var root: Dictionary = data
+		var seats_any: Variant = root.get("seats", [])
+		if typeof(seats_any) == TYPE_ARRAY:
+			rows = seats_any
+	for row_any in rows:
 		if typeof(row_any) != TYPE_DICTIONARY:
 			continue
 		_seats.append(row_any)
 	return _seats
+
+
+static func seat_count() -> int:
+	return load_seats().size()

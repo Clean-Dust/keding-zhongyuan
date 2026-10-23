@@ -41,9 +41,39 @@ func _init() -> void:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
 	## Until hand-filled: almost all land hexes have empty xian_id (no Voronoi/PIP paint).
+	## Seats must not invent territory — xian_fills stay 0 even when county_seats.json exists.
 	if xian_n > 0:
 		push_error("expected no xian fills yet, got %d" % xian_n)
 		failed += 1
+	var seats_n := CountiesRoster.seat_count()
+	if seats_n < 500:
+		push_error("county_seats too few: %d" % seats_n)
+		failed += 1
+	## Sample seat: 雒阳 should project near mid-north China hex.
+	var luoyang_ok := false
+	for s_any in CountiesRoster.load_seats():
+		if typeof(s_any) != TYPE_DICTIONARY:
+			continue
+		var s: Dictionary = s_any
+		if str(s.get("name", "")) != "雒阳":
+			continue
+		luoyang_ok = true
+		var col := int(s.get("col", -1))
+		var row := int(s.get("row", -1))
+		## Rough window: eastern-central plain on 160×160.
+		if col < 80 or col > 110 or row < 25 or row > 60:
+			push_error("雒阳 seat hex unexpected (%d,%d)" % [col, row])
+			failed += 1
+		break
+	if not luoyang_ok:
+		push_error("雒阳 seat missing from county_seats.json")
+		failed += 1
+	## Seats must not write xian_id onto hexes.
+	if FileAccess.file_exists("res://scripts/map_factory.gd"):
+		var mf2 := FileAccess.get_file_as_string("res://scripts/map_factory.gd")
+		if mf2.find("county_seats") >= 0 and mf2.find("xian_id") >= 0:
+			## Only fail if seats are applied as fills — soft check via xian_n above.
+			pass
 	## Extreme anchors on nearest hex (row 0 = north); 160×160 south to 象林.
 	var extremes := {
 		"敦煌": Vector2i(0, 7),
@@ -210,9 +240,9 @@ func _init() -> void:
 			push_error("load invented xian fills=%d" % x2)
 			failed += 1
 	print(
-		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d xian_fills=%d roster=%d z_hex=%.2f" % [
+		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d xian_fills=%d roster=%d seats=%d z_hex=%.2f" % [
 			1 if failed == 0 else 0, failed, ws.hexes.size(), ws.map_w, ws.map_h,
-			land_n, water_n, xian_n, CountiesRoster.county_count(), CameraLod.Z_HEX,
+			land_n, water_n, xian_n, CountiesRoster.county_count(), seats_n, CameraLod.Z_HEX,
 		]
 	)
 	call_deferred("quit", 1 if failed else 0)

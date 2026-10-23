@@ -40,7 +40,7 @@ Optional: open `project.godot` in the Godot editor and press Play.
 
 **州 / 郡 shapes are only unions of hexes whose `xian_id` belongs to that 州/郡** (parents from `data/counties_roster.*`). There is no separate 州/郡 geometry and no Voronoi/PIP fill.
 
-Until counties are hand-placed, every land hex has empty `xian_id`. Modes **州 / 郡 / 县** then show unpainted gray land (not green 地形, not Voronoi blobs) plus HUD/on-map「县范围尚未铺设」(roster count shown). Mode **地形** is land/sea green/blue as usual. Optional seat marks only if a future `data/county_seats.json` exists.
+Until county **ranges** are hand-filled, every land hex has empty `xian_id`. Modes **州 / 郡 / 县** then show unpainted gray land (not green 地形, not Voronoi blobs) plus HUD「县范围尚未铺设」. **治所** from `data/county_seats.json` draw as markers (labels in **县** mode); seats never invent territory paint. Mode **地形** is land/sea green/blue as usual.
 
 Retired stubs: `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json` (`unused_for_rendering`, empty — never loaded).
 
@@ -75,6 +75,7 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 - Geographic bbox: `lon 94.662…125.69`, `lat 15.55…41.272` (象林→襄平)
 - **Coast**: `data/coast_mask.*` — water impassable
 - **Admin names** (source of truth): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县. Paint uses per-hex `xian_id` + roster parents; **no** Voronoi / CHGIS auto-bake.
+- **治所**: `data/county_seats.json` — CHGIS V6 seats matched by name (+郡 proximity), projected to even-r hex; bake via `tools/match_county_seats.py`. Unmatched listed in `county_seats_report.json`.
 - **Retired stubs** (never loaded): `admin_*.json` — empty, `unused_for_rendering`. See `data/README.txt`.
 - Edge anchors: 敦煌 / 永昌 / 交趾 / 日南 / 象林 / 东冶 / 襄平 / 乐浪 (+ 金城 / 蓟 / 番禺 / 会稽)
 - Owned helpers: **会稽** 曹操, **蓟** 袁绍, **金城** 董卓残部
