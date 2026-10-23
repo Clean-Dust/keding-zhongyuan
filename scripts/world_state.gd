@@ -102,6 +102,7 @@ func city_cells() -> Array[Vector2i]:
 
 static func _hex_is_sparse_worthy(h: Dictionary) -> bool:
 	## Water comes from coast_mask on load — do not sparse-store every sea hex.
+	## CHGIS xian_id fills are reapplied from xian_fills.* on blank-grid rebuild — not sparse-stored.
 	var t := str(h.get("terrain", "plain"))
 	if t == "water":
 		return false
@@ -109,7 +110,6 @@ static func _hex_is_sparse_worthy(h: Dictionary) -> bool:
 		t != "plain"
 		or str(h.get("owner_faction_id", "")) != ""
 		or str(h.get("prefecture_id", "")) != ""
-		or str(h.get("xian_id", "")) != ""
 		or bool(h.get("is_anchor", false))
 	)
 
@@ -128,7 +128,6 @@ func to_dict() -> Dictionary:
 			"terrain": str(h.get("terrain", "plain")),
 			"owner_faction_id": str(h.get("owner_faction_id", "")),
 			"is_anchor": bool(h.get("is_anchor", false)),
-			"xian_id": str(h.get("xian_id", "")),
 		})
 	return {
 		"map_w": map_w,
@@ -184,7 +183,7 @@ func from_dict(d: Dictionary) -> void:
 			h.terrain = str(s.get("terrain", "plain"))
 			h.owner_faction_id = str(s.get("owner_faction_id", ""))
 			h.is_anchor = bool(s.get("is_anchor", str(h.terrain) == "city"))
-			h.xian_id = str(s.get("xian_id", ""))
+			## Keep baked CHGIS xian_id from build_blank_grid (do not clear from sparse).
 	elif d.has("hexes"):
 		## Legacy full-array saves (tiny map) — always remake on current grid.
 		map_w = Hex.MAP_W

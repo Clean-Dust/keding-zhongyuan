@@ -1,0 +1,282 @@
+{
+  "meta": {
+    "tier": "xian_fills",
+    "year": 140,
+    "map_w": 500,
+    "map_h": 500,
+    "bbox": {
+      "lon_min": 94.662,
+      "lon_max": 130.0,
+      "lat_min": 15.55,
+      "lat_max": 42.8
+    },
+    "layer": "CHGIS V6 v6_time_cnty_pts_utf_wgs84 (county points)",
+    "year_filter": "beg_yr≤140≤end_yr",
+    "method": "thiessen_of_chgis_county_points_clipped_to_ne_land; hex_center_point_in_polygon; roster xian_id via county_seats.chgis_sys_id",
+    "fidelity_note": "Not vector-identical to continuous polygons — each 500×500 hex (~6.9 km) is wholly assigned by whether its center lies inside a CHGIS-derived cell. CHGIS V6 has no Han-era county polygon layer; cells are Thiessen extents of CHGIS county seats (schematic neighbor extents, not cadastral).",
+    "citation": "CHGIS, Version 6 (c) Fairbank Center / Fudan CHGS, 2016",
+    "bin": "xian_fills.bin",
+    "stats": {
+      "land": 170246,
+      "water": 79754,
+      "filled": 153759,
+      "empty_land": 16487,
+      "fill_rate_land": 0.9032,
+      "chgis_points_in_bbox": 960,
+      "thiessen_cells": 960,
+      "roster_matched_cells": 861,
+      "chgis_cells_without_roster_seat": 99,
+      "distinct_xian_painted": 861,
+      "boundary_ambiguous_picks": 143,
+      "seats_sys_id_mapped": 892
+    },
+    "zhou_jun": "runtime unions via counties_roster parents of xian_id — no separate bake"
+  },
+  "stats": {
+    "land": 170246,
+    "water": 79754,
+    "filled": 153759,
+    "empty_land": 16487,
+    "fill_rate_land": 0.9032,
+    "chgis_points_in_bbox": 960,
+    "thiessen_cells": 960,
+    "roster_matched_cells": 861,
+    "chgis_cells_without_roster_seat": 99,
+    "distinct_xian_painted": 861,
+    "boundary_ambiguous_picks": 143,
+    "seats_sys_id_mapped": 892
+  },
+  "seats_with_zero_hexes": [
+    "xian:兖州/东平国/富成",
+    "xian:兖州/泰山郡/山茌",
+    "xian:冀州/安平国/信都",
+    "xian:冀州/安平国/扶柳",
+    "xian:冀州/巨鹿郡/平乡",
+    "xian:冀州/巨鹿郡/斥章",
+    "xian:冀州/清河国/甘陵",
+    "xian:冀州/魏郡/曲梁",
+    "xian:凉州/安定郡/阴盘",
+    "xian:凉州/居延属国/居延",
+    "xian:司隶/京兆尹/上洛",
+    "xian:司隶/左冯翊/衙",
+    "xian:司隶/弘农郡/新安",
+    "xian:司隶/河南尹/巩",
+    "xian:并州/上郡/候官",
+    "xian:并州/上郡/定阳",
+    "xian:并州/云中郡/云中",
+    "xian:并州/云中郡/定襄",
+    "xian:并州/云中郡/武进",
+    "xian:并州/五原郡/九原",
+    "xian:并州/五原郡/河阴",
+    "xian:幽州/广阳郡/广阳",
+    "xian:幽州/广阳郡/昌平",
+    "xian:幽州/辽东郡/新昌",
+    "xian:幽州/辽西郡/临渝",
+    "xian:幽州/辽西郡/阳乐",
+    "xian:徐州/东海郡/阴平",
+    "xian:益州/牂牁郡/平夷",
+    "xian:益州/犍为郡/南安",
+    "xian:荆州/南阳郡/南乡",
+    "xian:荆州/南阳郡/析",
+    "xian:荆州/南阳郡/酂",
+    "xian:荆州/江夏郡/轪",
+    "xian:豫州/汝南郡/新阳",
+    "xian:青州/东莱郡/掖",
+    "xian:青州/北海国/平昌",
+    "xian:青州/济南国/土鼓"
+  ],
+  "hexes_per_xian_top": [
+    [
+      "xian:益州/永昌郡/哀牢",
+      13223
+    ],
+    [
+      "xian:益州/益州郡/贲古",
+      9655
+    ],
+    [
+      "xian:青州/东莱郡/昌阳",
+      7563
+    ],
+    [
+      "xian:凉州/金城郡/临羌",
+      5299
+    ],
+    [
+      "xian:凉州/北地郡/廉",
+      4510
+    ],
+    [
+      "xian:益州/越巂郡/遂久",
+      4088
+    ],
+    [
+      "xian:凉州/酒泉郡/延寿",
+      3549
+    ],
+    [
+      "xian:交州/郁林郡/临尘",
+      3303
+    ],
+    [
+      "xian:幽州/辽西郡/肥如",
+      2729
+    ],
+    [
+      "xian:并州/西河郡/圜阴",
+      2511
+    ],
+    [
+      "xian:交州/南海郡/揭阳",
+      2401
+    ],
+    [
+      "xian:并州/定襄郡/善无",
+      2139
+    ],
+    [
+      "xian:益州/蜀郡/广柔",
+      1801
+    ],
+    [
+      "xian:凉州/敦煌郡/敦煌",
+      1536
+    ],
+    [
+      "xian:青州/东莱郡/东牟",
+      1487
+    ],
+    [
+      "xian:凉州/武威郡/显美",
+      1398
+    ],
+    [
+      "xian:交州/合浦郡/徐闻",
+      1342
+    ],
+    [
+      "xian:凉州/敦煌郡/渊泉",
+      1333
+    ],
+    [
+      "xian:幽州/渔阳郡/傂奚",
+      1244
+    ],
+    [
+      "xian:凉州/陇西郡/白石",
+      1197
+    ]
+  ],
+  "hexes_per_xian_bottom": [
+    [
+      "xian:冀州/巨鹿郡/南和",
+      5
+    ],
+    [
+      "xian:冀州/巨鹿郡/曲周",
+      5
+    ],
+    [
+      "xian:豫州/鲁国/蕃",
+      5
+    ],
+    [
+      "xian:徐州/彭城国/广戚",
+      5
+    ],
+    [
+      "xian:冀州/常山国/高邑",
+      6
+    ],
+    [
+      "xian:司隶/河内郡/波",
+      6
+    ],
+    [
+      "xian:司隶/京兆尹/长安",
+      6
+    ],
+    [
+      "xian:冀州/安平国/堂阳",
+      7
+    ],
+    [
+      "xian:青州/乐安国/博昌",
+      7
+    ],
+    [
+      "xian:青州/济南国/梁邹",
+      7
+    ],
+    [
+      "xian:冀州/赵国/襄国",
+      7
+    ],
+    [
+      "xian:兖州/东平国/须昌",
+      7
+    ],
+    [
+      "xian:兖州/泰山郡/巨平",
+      7
+    ],
+    [
+      "xian:豫州/鲁国/汶阳",
+      7
+    ],
+    [
+      "xian:司隶/河内郡/平皋",
+      7
+    ],
+    [
+      "xian:司隶/河南尹/平",
+      7
+    ],
+    [
+      "xian:荆州/南阳郡/安众",
+      7
+    ],
+    [
+      "xian:冀州/河间国/中水",
+      8
+    ],
+    [
+      "xian:冀州/巨鹿郡/广平",
+      8
+    ],
+    [
+      "xian:青州/北海国/営陵",
+      8
+    ]
+  ],
+  "filled_hexes_by_zhou": {
+    "交州": 13770,
+    "兖州": 1538,
+    "冀州": 2458,
+    "凉州": 29309,
+    "司隶": 3749,
+    "并州": 8808,
+    "幽州": 6913,
+    "徐州": 2119,
+    "扬州": 10544,
+    "益州": 49736,
+    "荆州": 11687,
+    "豫州": 2227,
+    "青州": 10901
+  },
+  "painted_xian_count_by_zhou": {
+    "交州": 28,
+    "兖州": 70,
+    "冀州": 91,
+    "凉州": 35,
+    "司隶": 87,
+    "并州": 40,
+    "幽州": 32,
+    "徐州": 53,
+    "扬州": 86,
+    "益州": 81,
+    "荆州": 109,
+    "豫州": 87,
+    "青州": 56
+  }
+}

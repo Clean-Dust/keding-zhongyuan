@@ -12,7 +12,7 @@ const NEIGHBORS: Array[Vector2i] = [
 ## Bounding box fitted to Sinica CCTS 三国 overlay view (ad0262 screenshot).
 ## West keeps 敦煌; east opens to full Korean peninsula; north covers 高句丽 margin;
 ## south keeps 象林/朱崖洲. Peripheral labels (羌胡/发羌/高句丽/夷洲) are view-only —
-## land there stays empty of 州/郡/县 until hand-filled (never auto-assigned).
+## land outside matched CHGIS@140 county cells stays empty of 州/郡/县 (never forced).
 const LON_MIN := 94.662 ## 敦煌 (凉州西缘)
 const LON_MAX := 130.0 ## east of 朝鲜半岛 / Busan sea margin
 const LAT_MIN := 15.55 ## 象林 / 朱崖洲南缘

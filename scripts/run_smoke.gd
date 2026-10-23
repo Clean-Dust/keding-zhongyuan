@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless smoke: coast, empty xian_id (no Voronoi fill), roster, tick, save/load.
+## Headless smoke: coast, CHGIS@140 xian fills, roster, seats, tick, save/load.
 
 
 func _init() -> void:
@@ -43,17 +43,20 @@ func _init() -> void:
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## Until hand-filled: almost all land hexes have empty xian_id (no Voronoi/PIP paint).
-	## Seats must not invent territory — xian_fills stay 0 even when county_seats.json exists.
-	if xian_n > 0:
-		push_error("expected no xian fills yet, got %d" % xian_n)
+	## CHGIS@140 hex-center fills must paint a large share of land (not empty-admin).
+	if xian_n < 50000:
+		push_error("expected CHGIS xian fills, got %d" % xian_n)
+		failed += 1
+	if not FileAccess.file_exists("res://data/xian_fills.json") or not FileAccess.file_exists("res://data/xian_fills.bin"):
+		push_error("missing xian_fills.json / xian_fills.bin")
 		failed += 1
 	var seats_n := CountiesRoster.seat_count()
 	if seats_n < 500:
 		push_error("county_seats too few: %d" % seats_n)
 		failed += 1
-	## Sample seat: 雒阳 should project near mid-north China hex.
+	## Sample seat: 雒阳 should project near mid-north China hex and carry its xian_id fill.
 	var luoyang_ok := false
+	var luoyang_id := "xian:司隶/河南尹/雒阳"
 	for s_any in CountiesRoster.load_seats():
 		if typeof(s_any) != TYPE_DICTIONARY:
 			continue
@@ -67,9 +70,19 @@ func _init() -> void:
 		if col < 200 or col > 360 or row < 80 or row > 220:
 			push_error("雒阳 seat hex unexpected (%d,%d)" % [col, row])
 			failed += 1
+		var seat_idx := row * Hex.MAP_W + col
+		if seat_idx >= 0 and seat_idx < ws.hexes.size():
+			var seat_hex: Dictionary = ws.hexes[seat_idx]
+			if str(seat_hex.get("xian_id", "")) != luoyang_id:
+				push_error("雒阳 seat hex xian_id=%s expected %s" % [seat_hex.get("xian_id", ""), luoyang_id])
+				failed += 1
 		break
 	if not luoyang_ok:
 		push_error("雒阳 seat missing from county_seats.json")
+		failed += 1
+	## 州/郡 aggregate from filled 县 — sample 雒阳 parents.
+	if CountiesRoster.zhou_of(luoyang_id) != "司隶" or CountiesRoster.jun_of(luoyang_id) != "河南尹":
+		push_error("雒阳 roster parents broken")
 		failed += 1
 	## Extreme anchors: expect Hex.lonlat_to_offset of their declared lon/lat.
 	for a in MapFactory.resolved_anchors():
@@ -217,7 +230,7 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast reapplied on load; admin stays empty until hand-filled.
+		## Coast + CHGIS xian fills reapplied via build_blank_grid on load.
 		var w2 := 0
 		var x2 := 0
 		for h2 in ws2.hexes:
@@ -228,8 +241,8 @@ func _init() -> void:
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if x2 > 0:
-			push_error("load invented xian fills=%d" % x2)
+		if x2 < 50000:
+			push_error("load lost CHGIS xian fills=%d" % x2)
 			failed += 1
 	print(
 		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d xian_fills=%d roster=%d seats=%d z_hex=%.2f" % [

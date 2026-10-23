@@ -2,10 +2,13 @@ class_name MapFactory
 extends RefCounted
 ## Builds 500×500 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
 ## Fixed square grid; south bbox to 象林 (docs/edge-cities-sanguo.md). Labels only at anchors.
-## Admin paint: only per-hex `xian_id` (hand-filled later). 郡/州 = roster parents of that 县.
-## Never loads legacy admin_zhou/jun/xian rings or admin_hex Voronoi/PIP.
+## Admin paint: per-hex `xian_id` from CHGIS@140 hex-center PIP bake (`xian_fills.*`).
+## 郡/州 = roster parents of filled 县 (no separate 州/郡 geometry).
+## Never loads legacy admin_zhou/jun/xian rings or admin_hex.json.
 
 const COAST_BIN := "res://data/coast_mask.bin"
+const XIAN_FILLS_META := "res://data/xian_fills.json"
+const XIAN_FILLS_BIN := "res://data/xian_fills.bin"
 
 
 ## Extreme + optional helper anchors: name, lat °N, lon °E, id, optional owner.
@@ -59,6 +62,7 @@ static func create_initial() -> WorldState:
 		},
 	]
 	ws.hexes = _build_hexes(ws.map_w, ws.map_h)
+	apply_xian_fills(ws.hexes, ws.map_w, ws.map_h)
 	ws.units = _build_units()
 	ws.time = {"day": 1, "paused": true, "speed": 0}
 	ws.rebuild_indexes()
@@ -93,8 +97,7 @@ static func apply_coast_to_hexes(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.
 			hcell.terrain = "plain" if raw[idx] != 0 else "water"
 
 
-## Blank plains grid in offset cols 0..w-1, rows 0..h-1 (axial stored), then coast.
-## xian_id stays empty until hand-filled; do not load legacy admin_hex.
+## Blank plains grid in offset cols 0..w-1, rows 0..h-1 (axial stored), then coast + xian fills.
 static func build_blank_grid(w: int, h: int) -> Array:
 	var out: Array = []
 	out.resize(w * h)
@@ -116,7 +119,53 @@ static func build_blank_grid(w: int, h: int) -> Array:
 			}
 			i += 1
 	apply_coast_to_hexes(out, w, h)
+	apply_xian_fills(out, w, h)
 	return out
+
+
+## Load CHGIS@140 hex-center fills (uint16 LE index → xian_table). Missing/mismatch → no-op.
+static func apply_xian_fills(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.MAP_H) -> void:
+	if not FileAccess.file_exists(XIAN_FILLS_META) or not FileAccess.file_exists(XIAN_FILLS_BIN):
+		push_warning("xian_fills missing — admin modes stay empty")
+		return
+	var f := FileAccess.open(XIAN_FILLS_META, FileAccess.READ)
+	if f == null:
+		push_warning("xian_fills.json unreadable")
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("xian_fills.json not an object")
+		return
+	var meta: Dictionary = parsed
+	if int(meta.get("map_w", 0)) != w or int(meta.get("map_h", 0)) != h:
+		push_warning("xian_fills map size mismatch")
+		return
+	var table_any: Variant = meta.get("xian_table", [])
+	if typeof(table_any) != TYPE_ARRAY:
+		push_warning("xian_fills.xian_table missing")
+		return
+	var table: Array = table_any
+	var raw := FileAccess.get_file_as_bytes(XIAN_FILLS_BIN)
+	if raw.size() != w * h * 2:
+		push_warning("xian_fills.bin size %d != %d" % [raw.size(), w * h * 2])
+		return
+	for row in h:
+		for col in w:
+			var idx := row * w + col
+			if idx >= hexes.size():
+				continue
+			var hcell: Dictionary = hexes[idx]
+			## Never paint water; coast is source of truth for terrain.
+			if str(hcell.get("terrain", "")) == "water":
+				hcell.xian_id = ""
+				continue
+			var off := idx * 2
+			var ti: int = int(raw[off]) | (int(raw[off + 1]) << 8)
+			if ti <= 0 or ti >= table.size():
+				hcell.xian_id = ""
+				continue
+			hcell.xian_id = str(table[ti])
 
 
 static func _disk(center: Vector2i, radius: int) -> Array[Vector2i]:

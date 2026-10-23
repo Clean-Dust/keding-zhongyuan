@@ -1,7 +1,7 @@
 extends Node2D
 ## Hex-based map draw. Display mode (州/郡/县/地形) is UI-driven — not zoom.
-## 州/郡/县 fills = unions of hexes sharing xian_id (parents via counties_roster).
-## No legacy Voronoi polygon / admin_hex PIP paint.
+## 县 paint from CHGIS@140 hex-center fills (xian_id on hex); no legacy admin_hex.json.
+## 州/郡/县 modes = unions of hexes sharing xian_id (parents via counties_roster).
 
 const HEX_SIZE := 36.0
 const HEX_DRAW := HEX_SIZE * 0.96

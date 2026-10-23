@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Match counties_roster.json to CHGIS V6 county seat points; project to hex.
+"""Match counties_roster.json to CHGIS V6 county seat points ONLY; project to hex.
+
+治所 coordinates are CHGIS-only (no Kongming / no map_factory_anchor seats).
+Map edge anchors remain in scripts/map_factory.gd for geography labels — not 县治所.
 
 Does NOT invent coordinates. Unmatched / far-offshore / out-of-bbox stay unmatched.
 Does NOT write xian_id hex fills or Voronoi — seats only.
@@ -8,12 +11,12 @@ Citation: CHGIS, Version 6 (c) Fairbank Center / Fudan CHGS, 2016.
 Academic research use; derived seat points only (no redistribution of raw shapefile).
 
 Usage (from repo root):
-  python3 tools/match_county_seats.py \\
-    --cnty /tmp/chgis/v6_time_cnty_pts_utf_wgs84.shp \\
-    --pref /tmp/chgis/v6_time_pref_pts_utf_wgs84.shp \\
-    --coast data/coast_mask.bin \\
-    --roster data/counties_roster.json \\
-    --out data/county_seats.json \\
+  python3 tools/match_county_seats.py \
+    --cnty /tmp/chgis/v6_time_cnty_pts_utf_wgs84.shp \
+    --pref /tmp/chgis/v6_time_pref_pts_utf_wgs84.shp \
+    --coast data/coast_mask.bin \
+    --roster data/counties_roster.json \
+    --out data/county_seats.json \
     --report data/county_seats_report.json
 """
 
@@ -112,20 +115,6 @@ EXTRA_ALIASES: dict[str, list[str]] = {
     "海塩": ["海盐"],
     "祋祤": ["祋祤", "祋祡"],
     "拒挺": ["拒县"],
-}
-
-# Kongming AD262 map: roster 东汉 州 ↔ map Prov_CHS (never 西域 / peripheral).
-KONGMING_SEAT_TYPES = {"County Seat", "Commandery Seat", "Provincial Seat", "Capital"}
-JUN_NAME_ALIASES: dict[str, list[str]] = {
-    "广阳": ["燕", "广阳"],
-    "左冯翊": ["冯翊", "左冯翊"],
-    "右扶风": ["扶风", "右扶风"],
-    "东": ["东"],
-    "陈留": ["陈留"],
-    "河南": ["河南"],
-    "京兆": ["京兆"],
-    "辽东": ["辽东"],
-    "乐浪": ["乐浪"],
 }
 
 
@@ -439,212 +428,12 @@ def project_seat(
         "snap": st,
     }
 
-
-def strip_paren(s: str) -> str:
-    s = t2s(s)
-    for mark in ("（", "("):
-        if mark in s:
-            s = s[: s.index(mark)]
-    return s.strip()
-
-
-def load_kongming_towns(path: Path) -> dict[str, list[dict]]:
-    """Index Kongming/Zhou Dadudu All_Towns.json by bare Town_CHS name.
-
-    Source: https://github.com/Heliog3nesis/Threekingdoms_Archive (maps on kongming.net).
-    Skips 西域 and non-seat types. Does not invent coords.
-    """
-    if not path.is_file():
-        return {}
-    data = json.loads(path.read_text(encoding="utf-8"))
-    rows = data.get("All_Towns_Details", data if isinstance(data, list) else [])
-    by: dict[str, list[dict]] = defaultdict(list)
-    for t in rows:
-        if str(t.get("Type", "")) not in KONGMING_SEAT_TYPES:
-            continue
-        prov = strip_paren(str(t.get("Prov_CHS") or t.get("Prov_CH") or ""))
-        if prov == "西域":
-            continue  # outside Sinica 十三州 crop / never force into roster 州
-        lon = float(t.get("Longitude", 0) or 0)
-        lat = float(t.get("Latitude", 0) or 0)
-        if lon == 0 and lat == 0:
-            continue
-        bare_names = {
-            roster_bare(str(t.get("Town_CHS") or "")),
-            bare_from_chgis(str(t.get("Town_CHS") or "")),
-            roster_bare(str(t.get("Town_CH") or "")),
-            bare_from_chgis(str(t.get("Town_CH") or "")),
-        }
-        rec = {
-            "name": t2s(str(t.get("Town_CHS") or t.get("Town_CH") or "")),
-            "lon": lon,
-            "lat": lat,
-            "type": str(t.get("Type", "")),
-            "prov": prov,
-            "comm": roster_bare(str(t.get("Comm_CHS") or t.get("Comm_CH") or "")),
-            "comm_raw": t2s(str(t.get("Comm_CHS") or t.get("Comm_CH") or "")),
-            "modern": t2s(str(t.get("Modern_CHS") or "")),
-        }
-        for b in bare_names:
-            if not b:
-                continue
-            # dedupe same lon/lat under key
-            if any(
-                abs(x["lon"] - lon) < 1e-5 and abs(x["lat"] - lat) < 1e-5 for x in by[b]
-            ):
-                continue
-            by[b].append(rec)
-    return by
-
-
-def jun_aliases(jun_bare: str) -> list[str]:
-    b = roster_bare(jun_bare)
-    out = [b]
-    for k, alts in JUN_NAME_ALIASES.items():
-        if b == k or b in alts:
-            out.extend(alts)
-            out.append(k)
-    # de-dupe
-    seen = set()
-    res = []
-    for x in out:
-        if x and x not in seen:
-            seen.add(x)
-            res.append(x)
-    return res
-
-
-def zhou_compatible(roster_zhou: str, km_prov: str, roster_jun: str) -> bool:
-    """Strict-ish 州 gate: never jam into a wrong 州; allow TK renames 司隶↔雍州 for 三辅."""
-    rz = t2s(roster_zhou)
-    kp = strip_paren(km_prov)
-    if not kp or kp == "西域":
-        return False
-    if kp == rz:
-        return True
-    if kp.startswith(rz):  # 扬州（吴） already stripped, but belt-and-suspenders
-        return True
-    jb = norm_jun(roster_jun)
-    # 东汉 司隶 三辅 ↔ 三国图 雍州
-    if rz == "司隶" and kp == "雍州" and jb in ("河南", "河内", "河东", "弘农", "京兆", "左冯翊", "右扶风"):
-        return True
-    # 凉州郡 sometimes drawn under 雍州 on AD262 maps
-    if rz == "凉州" and kp == "雍州":
-        return True
-    return False
-
-
-def pick_kongming(
-    cands: list[dict], roster_zhou: str, roster_jun: str
-) -> tuple[dict | None, str]:
-    """Require 州 compatibility; prefer 郡 name match. Refuse ambiguous cross-郡."""
-    if not cands:
-        return None, ""
-    zhou_ok = [c for c in cands if zhou_compatible(roster_zhou, c["prov"], roster_jun)]
-    if not zhou_ok:
-        return None, "kongming_zhou_mismatch"
-    jun_alts = set(jun_aliases(norm_jun(roster_jun)))
-    jun_ok = [
-        c
-        for c in zhou_ok
-        if c["comm"] in jun_alts or any(a and a in c["comm_raw"] for a in jun_alts)
-    ]
-    pool = jun_ok if jun_ok else zhou_ok
-    # dedupe by coords
-    uniq: dict[tuple[float, float], dict] = {}
-    for c in pool:
-        uniq[(round(c["lon"], 4), round(c["lat"], 4))] = c
-    pool = list(uniq.values())
-    if len(pool) == 1:
-        how = "kongming_name_jun" if jun_ok else "kongming_name_zhou"
-        return pool[0], how
-    if jun_ok and len(uniq) == 1:
-        return pool[0], "kongming_name_jun"
-    # Multiple distinct seats — refuse (do not invent / jam)
-    return None, "kongming_ambiguous"
-
-
-def try_kongming(
-    row: dict, by_km: dict[str, list[dict]], coast: bytes | None, base: dict, names: list[str]
-) -> dict | None:
-    if not by_km:
-        return None
-    cands: list[dict] = []
-    for n in names:
-        for t in by_km.get(n, []):
-            if not any(
-                abs(t["lon"] - c["lon"]) < 1e-5 and abs(t["lat"] - c["lat"]) < 1e-5
-                for c in cands
-            ):
-                cands.append(t)
-    pick, how = pick_kongming(cands, row["zhou"], row["jun"])
-    if pick is None:
-        return None
-    proj = project_seat(pick["lon"], pick["lat"], coast)
-    if proj["status"] != "ok":
-        return {
-            **base,
-            "matched": False,
-            "reason": proj["status"],
-            "confidence": "unmatched",
-            "lon": pick["lon"],
-            "lat": pick["lat"],
-            "source": "kongming_All_Towns",
-            "match_how": how,
-            "n_candidates": len(cands),
-        }
-    conf = "high" if how == "kongming_name_jun" else "medium"
-    return {
-        **base,
-        "matched": True,
-        "lon": round(pick["lon"], 6),
-        "lat": round(pick["lat"], 6),
-        "col": proj["col"],
-        "row": proj["row"],
-        "q": proj["q"],
-        "r": proj["r"],
-        "snap_dist": proj["snap_dist"],
-        "snap": proj["snap"],
-        "confidence": conf,
-        "source": "kongming_All_Towns",
-        "citation": "Zhou Dadudu All_Towns.json via Kongming’s Archives / Threekingdoms_Archive (AD262 map)",
-        "chgis_sys_id": None,
-        "chgis_name": pick["name"],
-        "chgis_type": pick["type"],
-        "chgis_beg": None,
-        "chgis_end": None,
-        "chgis_pres_loc": pick.get("modern", ""),
-        "year_filter": "ad262_map",
-        "match_how": how,
-        "match_name_key": roster_bare(row["name"]),
-    }
-
-
-# Project-approved lon/lat already used as map anchors (scripts/map_factory.gd).
-# Only applied when CHGIS has no name match for the same roster bare name.
-ANCHOR_SEATS: dict[str, dict] = {
-    "敦煌": {"lon": 94.662, "lat": 40.142, "note": "map_factory anchor 敦煌"},
-    "永昌": {"lon": 99.258, "lat": 25.155, "note": "map_factory anchor 永昌"},
-    "交趾": {"lon": 106.05, "lat": 21.05, "note": "map_factory anchor 交趾"},
-    "日南": {"lon": 106.68, "lat": 16.60, "note": "map_factory anchor 日南"},
-    "象林": {"lon": 108.05, "lat": 15.55, "note": "map_factory anchor 象林"},
-    "东冶": {"lon": 119.299, "lat": 26.096, "note": "map_factory anchor 东冶"},
-    "襄平": {"lon": 123.173, "lat": 41.272, "note": "map_factory anchor 襄平"},
-    "乐浪": {"lon": 125.69, "lat": 38.96, "note": "map_factory anchor 乐浪"},
-    "金城": {"lon": 103.295, "lat": 36.090, "note": "map_factory anchor 金城"},
-    "蓟": {"lon": 116.407, "lat": 39.904, "note": "map_factory anchor 蓟"},
-    "番禺": {"lon": 113.264, "lat": 23.129, "note": "map_factory anchor 番禺"},
-    "会稽": {"lon": 120.582, "lat": 30.002, "note": "map_factory anchor 会稽"},
-}
-
-
 def match_one(
     row: dict,
     by_primary: dict[str, list[dict]],
     by_range: dict[str, list[dict]],
     jun_seats: dict[str, dict],
     coast: bytes | None,
-    by_km: dict[str, list[dict]] | None = None,
 ) -> dict:
     xid = row["id"]
     name = row["name"]
@@ -677,45 +466,10 @@ def match_one(
 
     pick, how = pick_candidate(cands, jun_bare, jun_seat)
     if pick is None:
-        # Kongming / Zhou Dadudu All_Towns (strict 州/郡 gate — no peripheral jam).
-        km = try_kongming(row, by_km or {}, coast, base, names)
-        if km is not None and km.get("matched"):
-            return km
-        # Fallback: reuse project map-anchor lon/lat when the roster name matches.
-        bare_r = roster_bare(name)
-        if bare_r in ANCHOR_SEATS and not cands:
-            a = ANCHOR_SEATS[bare_r]
-            proj = project_seat(a["lon"], a["lat"], coast)
-            if proj["status"] == "ok":
-                return {
-                    **base,
-                    "matched": True,
-                    "lon": round(a["lon"], 6),
-                    "lat": round(a["lat"], 6),
-                    "col": proj["col"],
-                    "row": proj["row"],
-                    "q": proj["q"],
-                    "r": proj["r"],
-                    "snap_dist": proj["snap_dist"],
-                    "snap": proj["snap"],
-                    "confidence": "medium",
-                    "source": "map_factory_anchor",
-                    "citation": "keding-zhongyuan MapFactory.anchor_specs (edge/helper anchors)",
-                    "chgis_sys_id": None,
-                    "chgis_name": bare_r,
-                    "chgis_type": "anchor",
-                    "chgis_beg": None,
-                    "chgis_end": None,
-                    "chgis_pres_loc": a["note"],
-                    "year_filter": "anchor",
-                    "match_how": "anchor_fallback",
-                    "match_name_key": bare_r,
-                }
+        # CHGIS-only: no Kongming / no map_factory_anchor county 治所.
         reason = how or "no_chgis_name"
         if not cands:
             reason = "no_chgis_name"
-        if km is not None and not km.get("matched"):
-            reason = str(km.get("reason") or reason)
         return {
             **base,
             "matched": False,
@@ -799,12 +553,6 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cnty", type=Path, required=True)
     ap.add_argument("--pref", type=Path, required=True)
-    ap.add_argument(
-        "--kongming",
-        type=Path,
-        default=Path("/tmp/kongming/All_Towns.json"),
-        help="Zhou Dadudu All_Towns.json (Kongming map seats)",
-    )
     ap.add_argument("--coast", type=Path, default=Path("data/coast_mask.bin"))
     ap.add_argument("--roster", type=Path, default=Path("data/counties_roster.json"))
     ap.add_argument("--out", type=Path, default=Path("data/county_seats.json"))
@@ -844,10 +592,9 @@ def main() -> int:
                 jun_seats[want] = jun_seats[a]
                 break
 
-    by_km = load_kongming_towns(args.kongming)
     print(
         f"roster={len(roster)} chgis@140={len(primary)} chgis@{YEAR_LO}-{YEAR_HI}={len(ranged)} "
-        f"pref@140={len(prefs)} kongming_keys={len(by_km)} bbox=[{LON_MIN},{LON_MAX}]x[{LAT_MIN},{LAT_MAX}]"
+        f"pref@140={len(prefs)} source=CHGIS_only bbox=[{LON_MIN},{LON_MAX}]x[{LAT_MIN},{LAT_MAX}]"
     )
 
     seats: list[dict] = []
@@ -856,7 +603,7 @@ def main() -> int:
     src_counts: dict[str, int] = defaultdict(int)
 
     for row in roster:
-        m = match_one(row, by_primary, by_range, jun_seats, coast, by_km)
+        m = match_one(row, by_primary, by_range, jun_seats, coast)
         conf_counts[m["confidence"]] += 1
         if m.get("matched"):
             seats.append(m)
@@ -907,8 +654,8 @@ def main() -> int:
             "lat_max": LAT_MAX,
             "note": "Sinica CCTS ad0262 screenshot extent; 羌胡/发羌/高句丽/夷洲 land stays empty of admin",
         },
-        "source": "CHGIS V6 + Kongming All_Towns (Zhou Dadudu) matched by name+州/郡; anchors for gaps",
-        "citation": "CHGIS V6 (Fairbank/Fudan 2016); Kongming/Threekingdoms_Archive All_Towns.json; Sinica CCTS WMTS ad0262 for extent only (raster)",
+        "source": "CHGIS V6 county points ONLY matched to counties_roster by name (+郡 proximity)",
+        "citation": "CHGIS, Version 6 (c) Fairbank Center / Fudan CHGS, 2016. Sinica CCTS WMTS ad0262 for map extent only (raster, not seats).",
         "method": "name_match_project_snap; no Voronoi; no hex xian_id fills; no peripheral 州 jam",
         "projection": f"Hex.lonlat_to_offset even-r {MAP_W}x{MAP_H}; sea snap≤{SNAP_MAX}",
         "note": "Seats alone do not paint 县/郡/州 territory. Hand-fill hex ranges later.",
