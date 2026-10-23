@@ -1,9 +1,9 @@
 data — map assets (offline; runtime never downloads)
 
 coast_mask.bin / coast_mask.json
-  Natural Earth 50m land → 160×160 hex centers (plain=1 / water=0).
-  Bbox: 敦煌–乐浪–襄平–象林 (see scripts/hex.gd).
-  Bake: tools/bake_coast_admin.py --ne … --out data   (coast ONLY).
+  Natural Earth 50m land → 240×240 hex centers (plain=1 / water=0).
+  Bbox (Sinica ad0262 crop): lon 94.662–130.0, lat 15.55–42.8 (see scripts/hex.gd).
+  ≈14.5 km flat-to-flat. Bake: tools/bake_coast_admin.py --ne … --out data (coast ONLY).
 
 counties_roster.md / counties_roster.json  ← SOURCE OF TRUTH for admin names
   Curated 县名单 for era 184–280 under 东汉十三州 → 郡/国 → 县.

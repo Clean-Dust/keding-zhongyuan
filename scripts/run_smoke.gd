@@ -4,11 +4,14 @@ extends SceneTree
 
 func _init() -> void:
 	var failed := 0
-	if Hex.MAP_W != 160 or Hex.MAP_H != 160 or Hex.MAP_H != Hex.compute_map_h():
-		push_error("MAP=%dx%d expected 160x160 compute=%d" % [Hex.MAP_W, Hex.MAP_H, Hex.compute_map_h()])
+	if Hex.MAP_W != 240 or Hex.MAP_H != 240 or Hex.MAP_H != Hex.compute_map_h():
+		push_error("MAP=%dx%d expected 240x240 compute=%d" % [Hex.MAP_W, Hex.MAP_H, Hex.compute_map_h()])
 		failed += 1
 	if not is_equal_approx(Hex.LAT_MIN, 15.55):
 		push_error("LAT_MIN=%s expected 15.55 (象林)" % Hex.LAT_MIN)
+		failed += 1
+	if not is_equal_approx(Hex.LON_MAX, 130.0) or not is_equal_approx(Hex.LAT_MAX, 42.8):
+		push_error("bbox LON_MAX=%s LAT_MAX=%s expected 130.0 / 42.8 (Sinica crop)" % [Hex.LON_MAX, Hex.LAT_MAX])
 		failed += 1
 	CountiesRoster.ensure_loaded()
 	if CountiesRoster.county_count() < 1000:
@@ -60,37 +63,26 @@ func _init() -> void:
 		luoyang_ok = true
 		var col := int(s.get("col", -1))
 		var row := int(s.get("row", -1))
-		## Rough window: eastern-central plain on 160×160.
-		if col < 80 or col > 110 or row < 25 or row > 60:
+		## Rough window: eastern-central plain on 240×240 Sinica bbox.
+		if col < 100 or col > 170 or row < 40 or row > 100:
 			push_error("雒阳 seat hex unexpected (%d,%d)" % [col, row])
 			failed += 1
 		break
 	if not luoyang_ok:
 		push_error("雒阳 seat missing from county_seats.json")
 		failed += 1
-	## Seats must not write xian_id onto hexes.
-	if FileAccess.file_exists("res://scripts/map_factory.gd"):
-		var mf2 := FileAccess.get_file_as_string("res://scripts/map_factory.gd")
-		if mf2.find("county_seats") >= 0 and mf2.find("xian_id") >= 0:
-			## Only fail if seats are applied as fills — soft check via xian_n above.
-			pass
-	## Extreme anchors on nearest hex (row 0 = north); 160×160 south to 象林.
-	var extremes := {
-		"敦煌": Vector2i(0, 7),
-		"乐浪": Vector2i(159, 14),
-		"襄平": Vector2i(147, 0),
-		"交趾": Vector2i(58, 125),
-		"日南": Vector2i(61, 153),
-		"象林": Vector2i(69, 159),
-	}
+	## Extreme anchors: expect Hex.lonlat_to_offset of their declared lon/lat.
 	for a in MapFactory.resolved_anchors():
 		var name := str(a.name)
-		if not extremes.has(name):
-			continue
-		var want: Vector2i = extremes[name]
+		var want := Hex.lonlat_to_offset(float(a.lon), float(a.lat))
 		if int(a.col) != want.x or int(a.row) != want.y:
 			push_error("anchor %s at (%d,%d) expected (%d,%d)" % [name, a.col, a.row, want.x, want.y])
 			failed += 1
+	## 乐浪 must no longer sit on the east rim (bbox opens to Korea).
+	var lelang := Hex.lonlat_to_offset(125.69, 38.96)
+	if lelang.x >= Hex.MAP_W - 5:
+		push_error("乐浪 still near east rim col=%d (bbox not widened)" % lelang.x)
+		failed += 1
 	var p0 := Hex.to_pixel(Hex.offset_to_axial(0, 0), 10.0)
 	var p1 := Hex.to_pixel(Hex.offset_to_axial(0, 1), 10.0)
 	var p2 := Hex.to_pixel(Hex.offset_to_axial(0, 2), 10.0)

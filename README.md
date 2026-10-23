@@ -71,8 +71,8 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 
 ## Map / factions (MVP)
 
-- **160 × 160** hexes; pointy-top even-r (双数打横矮半格)
-- Geographic bbox: `lon 94.662…125.69`, `lat 15.55…41.272` (象林→襄平)
+- **240 × 240** hexes; pointy-top even-r (双数打横矮半格); ≈14.5 km flat-to-flat
+- Geographic bbox (Sinica CCTS `ad0262` screenshot): `lon 94.662…130.0`, `lat 15.55…42.8` (敦煌→朝鲜海缘；象林→高句丽北缘). Peripheral labels (羌胡/发羌/高句丽/夷洲) stay **empty** of 州/郡/县.
 - **Coast**: `data/coast_mask.*` — water impassable
 - **Admin names** (source of truth): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县. Paint uses per-hex `xian_id` + roster parents; **no** Voronoi / CHGIS auto-bake.
 - **治所**: `data/county_seats.json` — CHGIS V6 seats matched by name (+郡 proximity), projected to even-r hex; bake via `tools/match_county_seats.py`. Unmatched listed in `county_seats_report.json`.

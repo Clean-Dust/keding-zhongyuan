@@ -50,7 +50,7 @@ func _ready() -> void:
 	_configure_hud_mouse_filters()
 	_set_display_mode("zhou")
 	_refresh_hud()
-	_push_log("160×%d。左键拖拽平移；短按选择。顶栏 州/郡/县/地形；Esc → 设置调「鼠标拖拽」。" % Hex.MAP_H)
+	_push_log("%d×%d。左键拖拽平移；短按选择。顶栏 州/郡/县/地形；Esc → 设置调「鼠标拖拽」。" % [Hex.MAP_W, Hex.MAP_H])
 	world.save_to_path("user://dual_scale_debug.json")
 
 

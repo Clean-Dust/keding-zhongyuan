@@ -44,8 +44,8 @@ STUBS = {
 		"feature_count": 0,
 	},
 	"admin_hex.json": {
-		"map_w": 160,
-		"map_h": 160,
+		"map_w": 240,
+		"map_h": 240,
 		"unused_for_rendering": True,
 		"retired": "PIP vs Voronoi removed; runtime never loads this file",
 		"method": "retired_no_pip",
