@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless smoke: coast, hex admin ids, display modes, tick, save/load.
+## Headless smoke: coast, empty xian_id (no Voronoi fill), roster, tick, save/load.
 
 
 func _init() -> void:
@@ -10,6 +10,14 @@ func _init() -> void:
 	if not is_equal_approx(Hex.LAT_MIN, 15.55):
 		push_error("LAT_MIN=%s expected 15.55 (象林)" % Hex.LAT_MIN)
 		failed += 1
+	CountiesRoster.ensure_loaded()
+	if CountiesRoster.county_count() < 1000:
+		push_error("counties_roster too small: %d" % CountiesRoster.county_count())
+		failed += 1
+	var sample_id := "xian:司隶/河南尹/雒阳"
+	if CountiesRoster.zhou_of(sample_id) != "司隶" or CountiesRoster.jun_of(sample_id) != "河南尹":
+		push_error("roster lookup failed for %s" % sample_id)
+		failed += 1
 	var ws := MapFactory.create_initial()
 	var expect := Hex.MAP_W * Hex.MAP_H
 	if ws.hexes.size() != expect or ws.map_h != Hex.MAP_H:
@@ -17,34 +25,24 @@ func _init() -> void:
 		failed += 1
 	var land_n := 0
 	var water_n := 0
-	var zhou_n := 0
-	var jun_n := 0
 	var xian_n := 0
-	var zhou_ids: Dictionary = {}
 	for h in ws.hexes:
 		if str(h.get("terrain", "")) == "water":
 			water_n += 1
-			if str(h.get("zhou_id", "")) != "":
-				push_error("water hex has zhou_id")
+			if str(h.get("xian_id", "")) != "":
+				push_error("water hex has xian_id")
 				failed += 1
 				break
 		else:
 			land_n += 1
-			if str(h.get("zhou_id", "")) != "":
-				zhou_n += 1
-				zhou_ids[str(h.zhou_id)] = true
-			if str(h.get("jun_id", "")) != "":
-				jun_n += 1
 			if str(h.get("xian_id", "")) != "":
 				xian_n += 1
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	if zhou_n < 10000 or jun_n < 10000 or xian_n < 10000:
-		push_error("admin hex assign low zhou=%d jun=%d xian=%d" % [zhou_n, jun_n, xian_n])
-		failed += 1
-	if zhou_ids.size() < 10 or zhou_ids.size() > 13:
-		push_error("expected ~13 州 ids on land, got %d" % zhou_ids.size())
+	## Until hand-filled: almost all land hexes have empty xian_id (no Voronoi/PIP paint).
+	if xian_n > 0:
+		push_error("expected no xian fills yet, got %d" % xian_n)
 		failed += 1
 	## Extreme anchors on nearest hex (row 0 = north); 160×160 south to 象林.
 	var extremes := {
@@ -70,14 +68,24 @@ func _init() -> void:
 		push_error("even-r stagger failed p0=%s p1=%s p2=%s" % [p0, p1, p2])
 		failed += 1
 	for path in [
-		"res://data/admin_zhou.json",
-		"res://data/admin_jun.json",
-		"res://data/admin_xian.json",
-		"res://data/admin_hex.json",
+		"res://data/counties_roster.json",
 		"res://data/coast_mask.bin",
 	]:
 		if not FileAccess.file_exists(path):
 			push_error("missing %s" % path)
+			failed += 1
+	## Legacy admin files may exist but must not drive paint.
+	for path2 in [
+		"res://data/admin_zhou.json",
+		"res://data/admin_jun.json",
+		"res://data/admin_xian.json",
+		"res://data/admin_hex.json",
+	]:
+		if not FileAccess.file_exists(path2):
+			continue
+		var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(path2))
+		if typeof(raw) == TYPE_DICTIONARY and not bool((raw as Dictionary).get("unused_for_rendering", false)):
+			push_error("%s missing unused_for_rendering flag" % path2)
 			failed += 1
 	## Camera: micro band still exists; admin display is not zoom-driven.
 	if not is_equal_approx(CameraLod.Z_HEX, 0.85):
@@ -158,24 +166,24 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast + admin reapplied on load.
+		## Coast reapplied on load; admin stays empty until hand-filled.
 		var w2 := 0
-		var z2 := 0
+		var x2 := 0
 		for h2 in ws2.hexes:
 			if str(h2.get("terrain", "")) == "water":
 				w2 += 1
-			elif str(h2.get("zhou_id", "")) != "":
-				z2 += 1
+			elif str(h2.get("xian_id", "")) != "":
+				x2 += 1
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if z2 < 10000:
-			push_error("load lost admin zhou=%d" % z2)
+		if x2 > 0:
+			push_error("load invented xian fills=%d" % x2)
 			failed += 1
 	print(
-		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d admin_zhou=%d/%d jun=%d xian=%d z_hex=%.2f" % [
+		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d xian_fills=%d roster=%d z_hex=%.2f" % [
 			1 if failed == 0 else 0, failed, ws.hexes.size(), ws.map_w, ws.map_h,
-			land_n, water_n, zhou_n, zhou_ids.size(), jun_n, xian_n, CameraLod.Z_HEX,
+			land_n, water_n, xian_n, CountiesRoster.county_count(), CameraLod.Z_HEX,
 		]
 	)
 	call_deferred("quit", 1 if failed else 0)

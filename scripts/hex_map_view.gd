@@ -1,5 +1,7 @@
 extends Node2D
 ## Hex-based map draw. Display mode (州/郡/县/地形) is UI-driven — not zoom.
+## 州/郡/县 fills = unions of hexes sharing xian_id (parents via counties_roster).
+## No legacy Voronoi polygon / admin_hex PIP paint.
 
 const HEX_SIZE := 36.0
 const HEX_DRAW := HEX_SIZE * 0.96
@@ -10,7 +12,10 @@ const CITY_GREEN := Color(0.38, 0.52, 0.34)
 const UNASSIGNED_GRAY := Color(0.52, 0.52, 0.50)
 const ADMIN_BORDER := Color(0.22, 0.22, 0.20, 0.45)
 const ADMIN_NAME := Color(0.10, 0.10, 0.08, 0.92)
+const HINT_COLOR := Color(0.12, 0.12, 0.10, 0.88)
+const SEAT_MARK := Color(0.15, 0.12, 0.08, 0.9)
 const DRAW_MAP_MARKERS := false
+const EMPTY_ADMIN_HINT := "县范围尚未铺设"
 
 ## Display modes (buttons): zhou | jun | xian | terrain
 const MODE_ZHOU := "zhou"
@@ -39,17 +44,23 @@ var _redraw_scheduled: bool = false
 
 ## Label entries for current admin mode: {name, pos: Vector2}
 var _admin_labels: Array = []
+## True when at least one land hex has a non-empty xian_id.
+var _has_xian_fills: bool = false
+## Optional seat marks from data/county_seats.json (pixel positions).
+var _seat_marks: Array = []
 
 @onready var labels_root: Node2D = $Labels
 
 
 func setup(ws: WorldState) -> void:
 	world = ws
+	CountiesRoster.ensure_loaded()
 	_init_geometry()
 	_rebuild_faction_colors()
 	_rebuild_color_caches()
 	_rebuild_highlight_set()
 	_rebuild_admin_labels()
+	_rebuild_seat_marks()
 	if not world.changed.is_connected(_on_world_changed):
 		world.changed.connect(_on_world_changed)
 	_cam = get_viewport().get_camera_2d()
@@ -80,6 +91,10 @@ func set_lod(_new_lod: String) -> void:
 	pass
 
 
+func has_xian_fills() -> bool:
+	return _has_xian_fills
+
+
 func set_hover(cell: Vector2i) -> void:
 	if hover_cell == cell:
 		return
@@ -92,6 +107,7 @@ func _on_world_changed() -> void:
 	_rebuild_color_caches()
 	_rebuild_highlight_set()
 	_rebuild_admin_labels()
+	_rebuild_seat_marks()
 	_rebuild_pref_labels()
 	queue_redraw()
 
@@ -153,28 +169,16 @@ func _rebuild_highlight_set() -> void:
 		_highlight_set[Hex.key(c.x, c.y)] = true
 
 
+func _xian_id_of(h: Dictionary) -> String:
+	return str(h.get("xian_id", ""))
+
+
 func _admin_id_of(h: Dictionary) -> String:
-	match display_mode:
-		MODE_ZHOU:
-			return str(h.get("zhou_id", ""))
-		MODE_JUN:
-			return str(h.get("jun_id", ""))
-		MODE_XIAN:
-			return str(h.get("xian_id", ""))
-		_:
-			return ""
+	return CountiesRoster.admin_key(display_mode, _xian_id_of(h))
 
 
 func _admin_name_of(h: Dictionary) -> String:
-	match display_mode:
-		MODE_ZHOU:
-			return str(h.get("zhou_name", ""))
-		MODE_JUN:
-			return str(h.get("jun_name", ""))
-		MODE_XIAN:
-			return str(h.get("xian_name", ""))
-		_:
-			return ""
+	return CountiesRoster.admin_label(display_mode, _xian_id_of(h))
 
 
 func _tint_for_admin_id(aid: String) -> Color:
@@ -188,18 +192,38 @@ func _tint_for_admin_id(aid: String) -> Color:
 	return Color.from_hsv(hue, sat, val)
 
 
+func _terrain_color(h: Dictionary) -> Color:
+	var terrain := str(h.get("terrain", "plain"))
+	if terrain == "water":
+		return SEA_BLUE
+	return CITY_GREEN if terrain == "city" else PLAINS_GREEN
+
+
 func _color_for_hex(h: Dictionary) -> Color:
 	var terrain := str(h.get("terrain", "plain"))
 	if terrain == "water":
 		return SEA_BLUE
 	if display_mode == MODE_TERRAIN:
-		return CITY_GREEN if terrain == "city" else PLAINS_GREEN
-	return _tint_for_admin_id(_admin_id_of(h))
+		return _terrain_color(h)
+	## Until counties are hand-filled: bare land (same as 地形), not Voronoi gray blobs.
+	if not _has_xian_fills:
+		return _terrain_color(h)
+	var aid := _admin_id_of(h)
+	if aid == "":
+		return UNASSIGNED_GRAY
+	return _tint_for_admin_id(aid)
 
 
 func _rebuild_color_caches() -> void:
 	if world == null:
 		return
+	_has_xian_fills = false
+	for h in world.hexes:
+		if str(h.get("terrain", "")) == "water":
+			continue
+		if _xian_id_of(h) != "":
+			_has_xian_fills = true
+			break
 	var n := world.hexes.size()
 	_fill_hex.resize(n)
 	for i in n:
@@ -208,9 +232,9 @@ func _rebuild_color_caches() -> void:
 
 func _rebuild_admin_labels() -> void:
 	_admin_labels.clear()
-	if world == null or display_mode == MODE_TERRAIN:
+	if world == null or display_mode == MODE_TERRAIN or not _has_xian_fills:
 		return
-	## Accumulate pixel centroids per admin id.
+	## Accumulate pixel centroids per admin id (union of member 县 hexes).
 	var acc: Dictionary = {} ## id -> {name, sum: Vector2, n: int}
 	for h in world.hexes:
 		if str(h.get("terrain", "")) == "water":
@@ -235,6 +259,21 @@ func _rebuild_admin_labels() -> void:
 			"name": str(e2.name),
 			"pos": e2.sum / float(n2),
 		})
+
+
+func _rebuild_seat_marks() -> void:
+	_seat_marks.clear()
+	for row_any in CountiesRoster.load_seats():
+		if typeof(row_any) != TYPE_DICTIONARY:
+			continue
+		var row: Dictionary = row_any
+		if not row.has("lon") or not row.has("lat"):
+			continue
+		var px := Hex.lonlat_to_pixel(float(row.lon), float(row.lat), HEX_SIZE)
+		var nm := str(row.get("name", ""))
+		if nm == "" and str(row.get("xian_id", "")) != "":
+			nm = CountiesRoster.name_of(str(row.xian_id))
+		_seat_marks.append({"pos": px, "name": nm})
 
 
 func _rebuild_pref_labels() -> void:
@@ -314,6 +353,8 @@ func _draw() -> void:
 	draw_rect(Hex.map_pixel_rect(HEX_SIZE, world.map_w, world.map_h), SEA_BLUE)
 	_draw_hex_layer(vis)
 	_draw_admin_names(vis)
+	_draw_seat_marks(vis)
+	_draw_empty_admin_hint(vis)
 	if DRAW_MAP_MARKERS and world.path_preview.size() >= 2:
 		for i in range(world.path_preview.size() - 1):
 			var a := Hex.to_pixel(world.path_preview[i], HEX_SIZE)
@@ -321,6 +362,44 @@ func _draw() -> void:
 			draw_line(a, b, Color(1, 0.92, 0.55, 0.85), 3.0, false)
 	if DRAW_MAP_MARKERS:
 		_draw_units()
+
+
+func _draw_empty_admin_hint(vis: Rect2) -> void:
+	if display_mode == MODE_TERRAIN or _has_xian_fills:
+		return
+	var font_size := _world_font_px(28.0)
+	var center := vis.get_center()
+	draw_string(
+		ThemeDB.fallback_font,
+		center + Vector2(-float(font_size) * 3.2, float(font_size) * 0.35),
+		EMPTY_ADMIN_HINT,
+		HORIZONTAL_ALIGNMENT_LEFT,
+		-1,
+		font_size,
+		HINT_COLOR
+	)
+
+
+func _draw_seat_marks(vis: Rect2) -> void:
+	if display_mode == MODE_TERRAIN or _seat_marks.is_empty():
+		return
+	var font_size := _world_font_px(14.0)
+	for seat in _seat_marks:
+		var pos: Vector2 = seat.pos
+		if not vis.has_point(pos):
+			continue
+		draw_circle(pos, HEX_SIZE * 0.12, SEAT_MARK)
+		var nm: String = str(seat.get("name", ""))
+		if nm != "":
+			draw_string(
+				ThemeDB.fallback_font,
+				pos + Vector2(6, 4),
+				nm,
+				HORIZONTAL_ALIGNMENT_LEFT,
+				-1,
+				font_size,
+				ADMIN_NAME
+			)
 
 
 func _draw_admin_names(vis: Rect2) -> void:

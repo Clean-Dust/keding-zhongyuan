@@ -2,10 +2,10 @@ class_name MapFactory
 extends RefCounted
 ## Builds 160×160 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
 ## Fixed square grid; south bbox to 象林 (docs/edge-cities-sanguo.md). Labels only at anchors.
-## Admin regions are per-hex ids (州/郡/县) from baked point-in-polygon assignment.
+## Admin paint: only per-hex `xian_id` (hand-filled later). 郡/州 = roster parents of that 县.
+## Never loads legacy admin_zhou/jun/xian rings or admin_hex Voronoi/PIP.
 
 const COAST_BIN := "res://data/coast_mask.bin"
-const ADMIN_HEX := "res://data/admin_hex.json"
 
 
 ## Extreme + optional helper anchors: name, lat °N, lon °E, id, optional owner.
@@ -59,7 +59,6 @@ static func create_initial() -> WorldState:
 		},
 	]
 	ws.hexes = _build_hexes(ws.map_w, ws.map_h)
-	apply_admin_to_hexes(ws.hexes, ws.map_w, ws.map_h)
 	ws.units = _build_units()
 	ws.time = {"day": 1, "paused": true, "speed": 0}
 	ws.rebuild_indexes()
@@ -94,53 +93,8 @@ static func apply_coast_to_hexes(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.
 			hcell.terrain = "plain" if raw[idx] != 0 else "water"
 
 
-## Apply baked 州/郡/县 ids onto hexes (water → empty ids). Safe to call after coast.
-static func apply_admin_to_hexes(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.MAP_H) -> void:
-	if not FileAccess.file_exists(ADMIN_HEX):
-		push_warning("admin_hex.json missing — no admin ids")
-		return
-	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(ADMIN_HEX))
-	if typeof(data) != TYPE_DICTIONARY:
-		push_warning("admin_hex.json parse failed")
-		return
-	var root: Dictionary = data
-	if int(root.get("map_w", 0)) != w or int(root.get("map_h", 0)) != h:
-		push_warning("admin_hex.json size mismatch")
-		return
-	var zhou_t: Array = root.get("zhou_table", [])
-	var jun_t: Array = root.get("jun_table", [])
-	var xian_t: Array = root.get("xian_table", [])
-	var zhou_a: Array = root.get("zhou", [])
-	var jun_a: Array = root.get("jun", [])
-	var xian_a: Array = root.get("xian", [])
-	var n := mini(hexes.size(), zhou_a.size())
-	for i in n:
-		var hcell: Dictionary = hexes[i]
-		if str(hcell.get("terrain", "")) == "water":
-			hcell.zhou_id = ""
-			hcell.zhou_name = ""
-			hcell.jun_id = ""
-			hcell.jun_name = ""
-			hcell.xian_id = ""
-			hcell.xian_name = ""
-			continue
-		_apply_admin_slot(hcell, "zhou", zhou_t, int(zhou_a[i]))
-		_apply_admin_slot(hcell, "jun", jun_t, int(jun_a[i]))
-		_apply_admin_slot(hcell, "xian", xian_t, int(xian_a[i]))
-
-
-static func _apply_admin_slot(hcell: Dictionary, prefix: String, table: Array, ti: int) -> void:
-	var id := ""
-	var nm := ""
-	if ti > 0 and ti < table.size() and typeof(table[ti]) == TYPE_DICTIONARY:
-		var row: Dictionary = table[ti]
-		id = str(row.get("id", ""))
-		nm = str(row.get("name", ""))
-	hcell[prefix + "_id"] = id
-	hcell[prefix + "_name"] = nm
-
-
-## Blank plains grid in offset cols 0..w-1, rows 0..h-1 (axial stored), then coast + admin.
+## Blank plains grid in offset cols 0..w-1, rows 0..h-1 (axial stored), then coast.
+## xian_id stays empty until hand-filled; do not load legacy admin_hex.
 static func build_blank_grid(w: int, h: int) -> Array:
 	var out: Array = []
 	out.resize(w * h)
@@ -158,16 +112,10 @@ static func build_blank_grid(w: int, h: int) -> Array:
 				"terrain": "plain",
 				"owner_faction_id": "",
 				"is_anchor": false,
-				"zhou_id": "",
-				"zhou_name": "",
-				"jun_id": "",
-				"jun_name": "",
 				"xian_id": "",
-				"xian_name": "",
 			}
 			i += 1
 	apply_coast_to_hexes(out, w, h)
-	apply_admin_to_hexes(out, w, h)
 	return out
 
 
@@ -201,12 +149,7 @@ static func _build_hexes(w: int, h: int) -> Array:
 				"terrain": "plain" if is_land else "water",
 				"owner_faction_id": "",
 				"is_anchor": false,
-				"zhou_id": "",
-				"zhou_name": "",
-				"jun_id": "",
-				"jun_name": "",
 				"xian_id": "",
-				"xian_name": "",
 			}
 	for s in anchor_specs():
 		var o := Hex.lonlat_to_offset(float(s.lon), float(s.lat), w, h)
@@ -229,12 +172,7 @@ static func _build_hexes(w: int, h: int) -> Array:
 				"terrain": "city" if is_core else "plain",
 				"owner_faction_id": owner if is_core or owner != "" else "",
 				"is_anchor": is_core,
-				"zhou_id": "",
-				"zhou_name": "",
-				"jun_id": "",
-				"jun_name": "",
 				"xian_id": "",
-				"xian_name": "",
 			}
 	var out: Array = []
 	out.resize(w * h)

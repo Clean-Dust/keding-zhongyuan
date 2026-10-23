@@ -255,6 +255,8 @@ func _set_display_mode(mode: String) -> void:
 	for k in _mode_buttons.keys():
 		var btn: Button = _mode_buttons[k]
 		btn.set_pressed_no_signal(str(k) == mode)
+	if mode != "terrain" and not map_view.has_xian_fills():
+		_push_log("县范围尚未铺设（州/郡 = 县 hex 并集；名单见 counties_roster）")
 	_refresh_hud()
 
 

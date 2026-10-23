@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Assign 州/郡/县 ids to each land hex via point-in-polygon on hex centers.
+"""DEPRECATED — do not use for game rendering.
 
-Reads existing data/admin_{zhou,jun,xian}.json + coast_mask.bin.
-Writes data/admin_hex.json (tables + per-cell indices, row-major).
+Legacy PIP bake against Voronoi admin_* rings. The game no longer loads
+admin_hex.json for paint. Admin shapes come only from hand-filled per-hex
+xian_id + counties_roster parents (郡/州 = unions of 县 hexes).
 
-Usage (from repo root):
+Kept only so old files can be regenerated for archaeology. Prefer deleting
+or ignoring admin_hex.json / admin_{zhou,jun,xian}.json for runtime.
+
+Former usage (from repo root):
   python3 tools/bake_admin_hex.py
 """
 

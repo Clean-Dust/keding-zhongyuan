@@ -38,14 +38,11 @@ Optional: open `project.godot` in the Godot editor and press Play.
 
 ## Display modes
 
-Admin regions are **unions of hexes** with the same id (not free polygon overlays). Each land hex has `zhou_id` / `jun_id` / `xian_id` from baked point-in-polygon on hex centers (`data/admin_hex.json`).
+**州 / 郡 shapes are only unions of hexes whose `xian_id` belongs to that 州/郡** (parents from `data/counties_roster.*`). There is no separate 州/郡 geometry and no Voronoi/PIP fill.
 
-| Mode | Paint |
-|------|--------|
-| **州** | Hex fills tinted by 州; unassigned land gray; sea blue; 州 labels |
-| **郡** | Same by 郡/国 |
-| **县** | Same by 县 |
-| **地形** | Land green / sea blue (city slightly brighter); hex borders clearer |
+Until counties are hand-placed, almost every hex has empty `xian_id`. Modes **州 / 郡 / 县** then show bare land/sea like 地形, plus the on-map hint「县范围尚未铺设」(optional seat marks only if a future `data/county_seats.json` exists). Mode **地形** is land/sea as usual.
+
+Legacy `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json` are **unused for rendering** (kept for reference).
 
 ## Vertical loop
 
@@ -59,7 +56,7 @@ Admin regions are **unions of hexes** with the same id (not free polygon overlay
 
 - Pause menu **保存** → `user://dual_scale_save.json`
 - **读取** loads that file (falls back to `res://data/debug_save.json` if missing)
-- Sparse hex save; coast + admin ids reapplied on load
+- Sparse hex save; coast reapplied on load; `xian_id` persisted when set (empty until hand-filled)
 
 ## Settings (Esc → 设置…)
 
@@ -77,8 +74,8 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 - **160 × 160** hexes; pointy-top even-r (双数打横矮半格)
 - Geographic bbox: `lon 94.662…125.69`, `lat 15.55…41.272` (象林→襄平)
 - **Coast**: `data/coast_mask.*` — water impassable
-- **Admin names** (current): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县 (**names only**). Seats & hex ranges filled **manually** later; 郡/州 = merge of 县. **No** Voronoi / CHGIS auto-bake.
-- **Legacy geometry** (until replaced): `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` (old CHGIS Voronoi) and `admin_hex.json` (old PIP). See `data/README.txt`.
+- **Admin names** (source of truth): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县. Paint uses per-hex `xian_id` + roster parents; **no** Voronoi / CHGIS auto-bake.
+- **Legacy** (unused for rendering): `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json`. See `data/README.txt`.
 - Edge anchors: 敦煌 / 永昌 / 交趾 / 日南 / 象林 / 东冶 / 襄平 / 乐浪 (+ 金城 / 蓟 / 番禺 / 会稽)
 - Owned helpers: **会稽** 曹操, **蓟** 袁绍, **金城** 董卓残部
 
