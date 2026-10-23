@@ -78,6 +78,7 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 - **县 fills**: `data/xian_fills.json` + `data/xian_fills.bin` — bake via `tools/bake_xian_fills.py` (CHGIS@140 hex-center PIP). Coverage stats in `xian_fills_report.json`.
 - **治所**: `data/county_seats.json` — **CHGIS V6 only** (no Kongming); bake via `tools/match_county_seats.py`. Unmatched listed in `county_seats_report.json`.
 - **Retired stubs** (never loaded): `admin_*.json` — empty, `unused_for_rendering`. See `data/README.txt`.
+- **Sinica underlay**: `data/sinica_ad0262_underlay.jpg` — offline bake of CCTS WMTS `ad0262` (三國歷史地圖 **raster**, not vector). Toggle **底图** + opacity in the top bar. Bake: `python3 tools/bake_sinica_underlay.py`. Attribution: Academia Sinica CCTS.
 - Edge anchors: 敦煌 / 永昌 / 交趾 / 日南 / 象林 / 东冶 / 襄平 / 乐浪 (+ 金城 / 蓟 / 番禺 / 会稽)
 - Owned helpers: **会稽** 曹操, **蓟** 袁绍, **金城** 董卓残部
 

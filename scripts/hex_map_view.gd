@@ -48,6 +48,10 @@ var _admin_labels: Array = []
 var _has_admin_fills: bool = false
 ## Optional seat marks from data/county_seats.json (pixel positions).
 var _seat_marks: Array = []
+## Sinica CCTS ad0262 raster underlay (offline bake — not vector admin).
+var _sinica_tex: Texture2D
+var _sinica_enabled: bool = false
+var _sinica_opacity: float = 0.55
 
 @onready var labels_root: Node2D = $Labels
 
@@ -55,6 +59,7 @@ var _seat_marks: Array = []
 func setup(ws: WorldState) -> void:
 	world = ws
 	CountiesRoster.ensure_loaded()
+	_load_sinica_underlay()
 	_init_geometry()
 	_rebuild_faction_colors()
 	_rebuild_color_caches()
@@ -66,6 +71,40 @@ func setup(ws: WorldState) -> void:
 	_cam = get_viewport().get_camera_2d()
 	_rebuild_pref_labels()
 	queue_redraw()
+
+
+func _load_sinica_underlay() -> void:
+	_sinica_tex = null
+	var path := "res://data/sinica_ad0262_underlay.jpg"
+	if not FileAccess.file_exists(path):
+		push_warning("sinica underlay missing — toggle will no-op")
+		return
+	var abs_path := ProjectSettings.globalize_path(path)
+	var img := Image.load_from_file(abs_path)
+	if img == null or img.is_empty():
+		push_warning("sinica underlay failed to load")
+		return
+	_sinica_tex = ImageTexture.create_from_image(img)
+
+
+func set_sinica_underlay(enabled: bool) -> void:
+	_sinica_enabled = enabled and _sinica_tex != null
+	_rebuild_color_caches()
+	queue_redraw()
+
+
+func set_sinica_opacity(opacity: float) -> void:
+	_sinica_opacity = clampf(opacity, 0.0, 1.0)
+	_rebuild_color_caches()
+	queue_redraw()
+
+
+func has_sinica_underlay() -> bool:
+	return _sinica_tex != null
+
+
+func is_sinica_underlay_enabled() -> bool:
+	return _sinica_enabled
 
 
 func bind_camera(cam: CameraLod) -> void:
@@ -209,21 +248,39 @@ func _terrain_color(h: Dictionary) -> Color:
 	return CITY_GREEN if terrain == "city" else PLAINS_GREEN
 
 
+func _underlay_land_alpha() -> float:
+	## Let Sinica raster show through land fills when underlay is on.
+	if not _sinica_enabled or _sinica_opacity <= 0.05:
+		return 1.0
+	return clampf(1.0 - _sinica_opacity * 0.72, 0.18, 1.0)
+
+
 func _color_for_hex(h: Dictionary) -> Color:
 	var terrain := str(h.get("terrain", "plain"))
 	if terrain == "water":
 		return SEA_BLUE
+	var a := _underlay_land_alpha()
 	if display_mode == MODE_TERRAIN:
-		return _terrain_color(h)
+		var tc := _terrain_color(h)
+		tc.a = a
+		return tc
 	## 县 mode: no county faces — gray land + seat marks only.
 	if display_mode == MODE_XIAN:
-		return UNASSIGNED_GRAY
+		var g := UNASSIGNED_GRAY
+		g.a = a * 0.55
+		return g
 	if not _has_admin_fills:
-		return UNASSIGNED_GRAY
+		var g2 := UNASSIGNED_GRAY
+		g2.a = a * 0.45
+		return g2
 	var aid := _admin_id_of(h)
 	if aid == "":
-		return UNASSIGNED_GRAY
-	return _tint_for_admin_id(aid)
+		var g3 := UNASSIGNED_GRAY
+		g3.a = a * 0.45
+		return g3
+	var tint := _tint_for_admin_id(aid)
+	tint.a = clampf(a + 0.15, 0.25, 1.0)
+	return tint
 
 
 func _rebuild_color_caches() -> void:
@@ -239,16 +296,10 @@ func _rebuild_color_caches() -> void:
 				break
 	var n := world.hexes.size()
 	_fill_hex.resize(n)
-	## Fast path: empty admin + terrain + 县 modes avoid per-hex admin tint work on 500².
+	## Fast path: empty admin + terrain + 县 modes — still apply underlay land alpha.
 	if display_mode == MODE_TERRAIN or display_mode == MODE_XIAN or not _has_admin_fills:
 		for i in n:
-			var h2: Dictionary = world.hexes[i]
-			if str(h2.get("terrain", "")) == "water":
-				_fill_hex[i] = SEA_BLUE
-			elif display_mode == MODE_TERRAIN:
-				_fill_hex[i] = _terrain_color(h2)
-			else:
-				_fill_hex[i] = UNASSIGNED_GRAY
+			_fill_hex[i] = _color_for_hex(world.hexes[i])
 		return
 	for i in n:
 		_fill_hex[i] = _color_for_hex(world.hexes[i])
@@ -384,6 +435,8 @@ func _draw() -> void:
 	var vis := _visible_world_rect()
 	## Full-map sea underlay so off-hex edges stay blue (not clear-color black).
 	draw_rect(Hex.map_pixel_rect(HEX_SIZE, world.map_w, world.map_h), SEA_BLUE)
+	## Sinica CCTS ad0262 raster (georeferenced to Hex bbox) — not vector admin.
+	_draw_sinica_underlay()
 	_draw_hex_layer(vis)
 	_draw_admin_names(vis)
 	_draw_seat_marks(vis)
@@ -395,6 +448,16 @@ func _draw() -> void:
 			draw_line(a, b, Color(1, 0.92, 0.55, 0.85), 3.0, false)
 	if DRAW_MAP_MARKERS:
 		_draw_units()
+
+
+func _draw_sinica_underlay() -> void:
+	if not _sinica_enabled or _sinica_tex == null or _sinica_opacity <= 0.01:
+		return
+	## Align texture corners to game equirectangular bbox (same as Hex.lonlat_to_*).
+	var tl := Hex.lonlat_to_pixel(Hex.LON_MIN, Hex.LAT_MAX, HEX_SIZE)
+	var br := Hex.lonlat_to_pixel(Hex.LON_MAX, Hex.LAT_MIN, HEX_SIZE)
+	var rect := Rect2(tl, br - tl)
+	draw_texture_rect(_sinica_tex, rect, false, Color(1, 1, 1, _sinica_opacity))
 
 
 func _draw_empty_admin_hint(vis: Rect2) -> void:

@@ -123,10 +123,31 @@ func _init() -> void:
 	for path in [
 		"res://data/counties_roster.json",
 		"res://data/coast_mask.bin",
+		"res://data/sinica_ad0262_underlay.jpg",
+		"res://data/sinica_ad0262_underlay.json",
 	]:
 		if not FileAccess.file_exists(path):
 			push_error("missing %s" % path)
 			failed += 1
+	## Sinica underlay is raster only — must load; never invent hex fills from it.
+	var abs_u := ProjectSettings.globalize_path("res://data/sinica_ad0262_underlay.jpg")
+	var uimg := Image.load_from_file(abs_u)
+	if uimg == null or uimg.get_width() < 100:
+		push_error("sinica underlay image bad")
+		failed += 1
+	var umeta: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/sinica_ad0262_underlay.json"))
+	if typeof(umeta) != TYPE_DICTIONARY:
+		push_error("sinica underlay meta not object")
+		failed += 1
+	else:
+		var um: Dictionary = umeta
+		if str(um.get("layer", "")) != "ad0262" or str(um.get("kind", "")) != "raster_wmts_tiles":
+			push_error("sinica meta must declare ad0262 raster_wmts_tiles")
+			failed += 1
+		if str(um.get("not_vector", "")).find("NOT") < 0:
+			push_error("sinica meta missing not_vector warning")
+			failed += 1
+
 	## Legacy admin files may exist but must not drive paint — stubs only, no rings/PIP.
 	for path2 in [
 		"res://data/admin_zhou.json",

@@ -36,3 +36,9 @@ admin_zhou.json / admin_jun.json / admin_xian.json / admin_hex.json
   (rewrites empty stubs only).
 
 debug_save.json — optional legacy seed (runtime prefers MapFactory + coast + xian_fills).
+
+sinica_ad0262_underlay.jpg / sinica_ad0262_underlay.json
+  Offline equirectangular bake of Academia Sinica CCTS WMTS layer ad0262
+  (三國歷史地圖) for the game bbox. RASTER only — not vector 州/郡.
+  Bake: tools/bake_sinica_underlay.py (polite tile fetch + warp).
+  Runtime: HexMapView underlay toggle; do not color-pick into hex fills.

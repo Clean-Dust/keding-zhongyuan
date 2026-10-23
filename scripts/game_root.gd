@@ -12,6 +12,8 @@ var display_mode: String = "zhou"
 var _was_hex := false
 var _log: PackedStringArray = []
 var _mode_buttons: Dictionary = {} ## mode -> Button
+var _sinica_btn: Button
+var _sinica_slider: HSlider
 
 @onready var camera: CameraLod = $CameraLod
 @onready var map_view: Node2D = $HexMapView
@@ -244,9 +246,49 @@ func _build_mode_buttons() -> void:
 		bar.add_child(btn)
 		_mode_buttons[mode] = btn
 		x += 52.0
+	## Sinica CCTS ad0262 raster underlay (not vector 州 fills).
+	x += 8.0
+	_sinica_btn = Button.new()
+	_sinica_btn.text = "底图"
+	_sinica_btn.tooltip_text = "Sinica CCTS ad0262 三國歷史地圖（栅格底图，非矢量界）"
+	_sinica_btn.position = Vector2(x, 10)
+	_sinica_btn.size = Vector2(48, 32)
+	_sinica_btn.toggle_mode = true
+	_sinica_btn.focus_mode = Control.FOCUS_NONE
+	_sinica_btn.disabled = not map_view.has_sinica_underlay()
+	_sinica_btn.toggled.connect(_on_sinica_toggled)
+	bar.add_child(_sinica_btn)
+	x += 52.0
+	_sinica_slider = HSlider.new()
+	_sinica_slider.min_value = 0.1
+	_sinica_slider.max_value = 1.0
+	_sinica_slider.step = 0.05
+	_sinica_slider.value = 0.55
+	_sinica_slider.position = Vector2(x, 14)
+	_sinica_slider.size = Vector2(72, 24)
+	_sinica_slider.tooltip_text = "底图不透明度"
+	_sinica_slider.focus_mode = Control.FOCUS_NONE
+	_sinica_slider.editable = false
+	_sinica_slider.value_changed.connect(_on_sinica_opacity)
+	bar.add_child(_sinica_slider)
+	x += 80.0
 	## Shift turn label right of mode buttons.
 	var turn_l: Label = hud.get_node("TopBar/TurnLabel")
 	turn_l.position.x = x + 8.0
+
+
+func _on_sinica_toggled(pressed: bool) -> void:
+	map_view.set_sinica_underlay(pressed)
+	if _sinica_slider != null:
+		_sinica_slider.editable = pressed and map_view.has_sinica_underlay()
+	if pressed:
+		_push_log("Sinica CCTS ad0262 底图开（栅格；非矢量州界）")
+	else:
+		_push_log("Sinica 底图关")
+
+
+func _on_sinica_opacity(v: float) -> void:
+	map_view.set_sinica_opacity(v)
 
 
 func _set_display_mode(mode: String) -> void:

@@ -1,0 +1,28 @@
+{
+  "layer": "ad0262",
+  "title": "三國歷史地圖(Sanguo)",
+  "service": "https://gis.sinica.edu.tw/ccts/wmts",
+  "showwmts": "https://gis.sinica.edu.tw/showwmts/index.php?s=ccts&l=ad0262",
+  "kind": "raster_wmts_tiles",
+  "not_vector": "CCTS ad0262 is raster imagery of a historical map (州 borders painted in the image). It is NOT downloadable vector admin polygons — do not treat as CHGIS pref_pgn. Underlay only; no color-pick hex fills.",
+  "tile_matrix_set": "GoogleMapsCompatible",
+  "bake_zoom": 7,
+  "tile_range": {
+    "tx0": 97,
+    "ty0": 47,
+    "tx1": 110,
+    "ty1": 58
+  },
+  "bbox": {
+    "lon_min": 94.662,
+    "lon_max": 130.0,
+    "lat_min": 15.55,
+    "lat_max": 42.8,
+    "note": "Same Sinica screenshot extent as Hex.gd / 500×500 game map"
+  },
+  "projection": "equirectangular linear lon/lat (matches Hex.lonlat_to_pixel)",
+  "image": "sinica_ad0262_underlay.jpg",
+  "width": 2048,
+  "height": 1579,
+  "attribution": "Academia Sinica CCTS — 中華文明之時空基礎架構 WMTS layer ad0262 三國歷史地圖(Sanguo). Academic research use; offline bake of public WMTS tiles."
+}
