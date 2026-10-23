@@ -77,7 +77,8 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 - **160 × 160** hexes; pointy-top even-r (双数打横矮半格)
 - Geographic bbox: `lon 94.662…125.69`, `lat 15.55…41.272` (象林→襄平)
 - **Coast**: `data/coast_mask.*` — water impassable
-- **Admin**: 东汉十三州 + 郡/县 rings → per-hex ids in `admin_hex.json` (`tools/bake_admin_hex.py`)
+- **Admin names** (current): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县 (**names only**). Seats & hex ranges filled **manually** later; 郡/州 = merge of 县. **No** Voronoi / CHGIS auto-bake.
+- **Legacy geometry** (until replaced): `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` (old CHGIS Voronoi) and `admin_hex.json` (old PIP). See `data/README.txt`.
 - Edge anchors: 敦煌 / 永昌 / 交趾 / 日南 / 象林 / 东冶 / 襄平 / 乐浪 (+ 金城 / 蓟 / 番禺 / 会稽)
 - Owned helpers: **会稽** 曹操, **蓟** 袁绍, **金城** 董卓残部
 
@@ -85,15 +86,14 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 
 `lod_scale ≤ 0.85` (`CameraLod.Z_HEX`) enters hex micro and pauses strategic time. Admin paint stays on the selected button.
 
-### Re-bake
+### Re-bake coast (admin borders: manual pipeline only)
 
 ```bash
-# Coast + admin rings (needs NE + CHGIS shapefiles)
-python3 tools/bake_coast_admin.py --ne … --cnty … --pref … --out data
-
-# Per-hex admin ids from existing admin_*.json + coast
-python3 tools/bake_admin_hex.py
+# Coast only. Do NOT regenerate admin_* Voronoi or admin_hex from PIP.
+python3 tools/bake_coast_admin.py --ne /path/to/ne_50m_land.shp --out data
 ```
+
+Admin names: edit `data/counties_roster.*`. Geometry TBD by hand (seats → hex ranges).
 
 ## Windows export
 
