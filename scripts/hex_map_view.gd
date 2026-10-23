@@ -227,6 +227,17 @@ func _rebuild_color_caches() -> void:
 			break
 	var n := world.hexes.size()
 	_fill_hex.resize(n)
+	## Fast path: empty admin + terrain modes avoid per-hex admin tint work on 500².
+	if display_mode == MODE_TERRAIN or not _has_xian_fills:
+		for i in n:
+			var h2: Dictionary = world.hexes[i]
+			if str(h2.get("terrain", "")) == "water":
+				_fill_hex[i] = SEA_BLUE
+			elif display_mode == MODE_TERRAIN:
+				_fill_hex[i] = _terrain_color(h2)
+			else:
+				_fill_hex[i] = UNASSIGNED_GRAY
+		return
 	for i in n:
 		_fill_hex[i] = _color_for_hex(world.hexes[i])
 
@@ -463,35 +474,51 @@ func _draw_hex_layer(vis: Rect2) -> void:
 	var vis_t := vis.position.y
 	var vis_b := vis.end.y
 	var lod_s := _current_lod_scale()
-	## Far zoom: axis-aligned rects (faster); near: true hexes + borders.
-	var use_rects := lod_s >= 4.0
-	var show_borders := true
+	## 500² mitigations: far zoom → rects, no borders; skip sea (underlay already blue);
+	## when framed full-map would draw ~250k cells, step the grid.
+	var use_rects := lod_s >= 2.5
+	var show_borders := lod_s < 2.5
 	var border_w := 1.2 if display_mode == MODE_TERRAIN else 0.7
-	for row in range(bounds.y, bounds.w + 1):
+	var cols_v := bounds.z - bounds.x + 1
+	var rows_v := bounds.w - bounds.y + 1
+	var vis_cells := cols_v * rows_v
+	var step := 1
+	if vis_cells > 35000:
+		step = 2
+	if vis_cells > 90000:
+		step = 3
+	if vis_cells > 160000:
+		step = 4
+	var cell_w := sx * float(step)
+	var cell_h := sy * float(step)
+	for row in range(bounds.y, bounds.w + 1, step):
 		var x_bias := 0.0 if (row & 1) == 0 else -0.5 * sx
 		var cy := sy * float(row)
 		if cy < vis_t - HEX_SIZE or cy > vis_b + HEX_SIZE:
 			continue
-		for col in range(bounds.x, bounds.z + 1):
+		for col in range(bounds.x, bounds.z + 1, step):
 			var cx := sx * float(col) + x_bias
 			if cx < vis_l or cx > vis_r:
 				continue
 			var idx := row * w + col
 			if idx < 0 or idx >= _fill_hex.size():
 				continue
-			var center := Vector2(cx, cy)
 			var fill: Color = _fill_hex[idx]
+			## Sea underlay already painted — skip water cells (big win on 500²).
+			if fill == SEA_BLUE:
+				continue
+			var center := Vector2(cx, cy)
 			if DRAW_MAP_MARKERS:
 				var cell := Hex.offset_to_axial(col, row)
 				if cell == hover_cell:
 					fill = fill.lightened(0.12)
 				if _highlight_set.has(Hex.key(cell.x, cell.y)):
 					fill = fill.lerp(Color(0.95, 0.85, 0.35), 0.45)
-			if use_rects:
-				draw_rect(Rect2(center.x - sx * 0.5, center.y - sy * 0.5, sx, sy), fill)
+			if use_rects or step > 1:
+				draw_rect(Rect2(center.x - cell_w * 0.5, center.y - cell_h * 0.5, cell_w, cell_h), fill)
 			else:
 				_draw_hex_fill(center, fill)
-				if show_borders and fill != SEA_BLUE:
+				if show_borders:
 					_draw_hex_border(center, border_w)
 
 

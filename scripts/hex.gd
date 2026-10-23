@@ -18,10 +18,10 @@ const LON_MAX := 130.0 ## east of 朝鲜半岛 / Busan sea margin
 const LAT_MIN := 15.55 ## 象林 / 朱崖洲南缘
 const LAT_MAX := 42.8 ## north of 高句丽 margin on Sinica crop
 
-## 240×240 over Sinica ad0262 extent ≈14.5 km flat-to-flat (was 160×160 ≈20 km on old bbox).
-const MAP_W := 240
+## 500×500 over Sinica ad0262 extent ≈6.9 km flat-to-flat (was 240≈14.3 km; 160≈19 km).
+const MAP_W := 500
 ## Fixed square grid; lon/lat linear onto WIDTH×HEIGHT.
-const MAP_H := 240
+const MAP_H := 500
 
 
 static func mid_lat() -> float:

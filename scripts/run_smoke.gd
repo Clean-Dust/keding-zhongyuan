@@ -4,8 +4,8 @@ extends SceneTree
 
 func _init() -> void:
 	var failed := 0
-	if Hex.MAP_W != 240 or Hex.MAP_H != 240 or Hex.MAP_H != Hex.compute_map_h():
-		push_error("MAP=%dx%d expected 240x240 compute=%d" % [Hex.MAP_W, Hex.MAP_H, Hex.compute_map_h()])
+	if Hex.MAP_W != 500 or Hex.MAP_H != 500 or Hex.MAP_H != Hex.compute_map_h():
+		push_error("MAP=%dx%d expected 500x500 compute=%d" % [Hex.MAP_W, Hex.MAP_H, Hex.compute_map_h()])
 		failed += 1
 	if not is_equal_approx(Hex.LAT_MIN, 15.55):
 		push_error("LAT_MIN=%s expected 15.55 (象林)" % Hex.LAT_MIN)
@@ -63,8 +63,8 @@ func _init() -> void:
 		luoyang_ok = true
 		var col := int(s.get("col", -1))
 		var row := int(s.get("row", -1))
-		## Rough window: eastern-central plain on 240×240 Sinica bbox.
-		if col < 100 or col > 170 or row < 40 or row > 100:
+		## Rough window: eastern-central plain on 500×500 Sinica bbox.
+		if col < 200 or col > 360 or row < 80 or row > 220:
 			push_error("雒阳 seat hex unexpected (%d,%d)" % [col, row])
 			failed += 1
 		break

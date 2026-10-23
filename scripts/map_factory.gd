@@ -1,6 +1,6 @@
 class_name MapFactory
 extends RefCounted
-## Builds 240×240 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
+## Builds 500×500 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
 ## Fixed square grid; south bbox to 象林 (docs/edge-cities-sanguo.md). Labels only at anchors.
 ## Admin paint: only per-hex `xian_id` (hand-filled later). 郡/州 = roster parents of that 县.
 ## Never loads legacy admin_zhou/jun/xian rings or admin_hex Voronoi/PIP.

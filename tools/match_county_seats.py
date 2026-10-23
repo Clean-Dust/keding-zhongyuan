@@ -38,7 +38,7 @@ except ImportError as e:
 # Match Hex.gd (Sinica ad0262 screenshot extent)
 LON_MIN, LON_MAX = 94.662, 130.0
 LAT_MIN, LAT_MAX = 15.55, 42.8
-MAP_W, MAP_H = 240, 240
+MAP_W, MAP_H = 500, 500
 YEAR_PRIMARY = 140
 YEAR_LO, YEAR_HI = 100, 280
 # Snap seat from water to land within this hex distance; beyond → unmatched.
