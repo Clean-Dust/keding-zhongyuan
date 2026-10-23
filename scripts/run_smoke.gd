@@ -74,7 +74,7 @@ func _init() -> void:
 		if not FileAccess.file_exists(path):
 			push_error("missing %s" % path)
 			failed += 1
-	## Legacy admin files may exist but must not drive paint.
+	## Legacy admin files may exist but must not drive paint — stubs only, no rings/PIP.
 	for path2 in [
 		"res://data/admin_zhou.json",
 		"res://data/admin_jun.json",
@@ -84,9 +84,38 @@ func _init() -> void:
 		if not FileAccess.file_exists(path2):
 			continue
 		var raw: Variant = JSON.parse_string(FileAccess.get_file_as_string(path2))
-		if typeof(raw) == TYPE_DICTIONARY and not bool((raw as Dictionary).get("unused_for_rendering", false)):
+		if typeof(raw) != TYPE_DICTIONARY:
+			push_error("%s not a dict" % path2)
+			failed += 1
+			continue
+		var root2: Dictionary = raw
+		if not bool(root2.get("unused_for_rendering", false)):
 			push_error("%s missing unused_for_rendering flag" % path2)
 			failed += 1
+		if root2.has("features") and (root2.get("features") as Array).size() > 0:
+			push_error("%s still has Voronoi features" % path2)
+			failed += 1
+		if root2.has("zhou") and (root2.get("zhou") as Array).size() > 0:
+			push_error("%s still has PIP zhou array" % path2)
+			failed += 1
+	## 郡/州 keys derive only from roster parents of a filled xian_id.
+	var zhou_k := CountiesRoster.admin_key("zhou", sample_id)
+	var jun_k := CountiesRoster.admin_key("jun", sample_id)
+	var xian_k := CountiesRoster.admin_key("xian", sample_id)
+	if zhou_k != "司隶" or not str(jun_k).contains("河南尹") or xian_k != sample_id:
+		push_error("admin_key derive failed zhou=%s jun=%s xian=%s" % [zhou_k, jun_k, xian_k])
+		failed += 1
+	if CountiesRoster.admin_key("zhou", "") != "" or CountiesRoster.admin_key("jun", "") != "":
+		push_error("empty xian_id must not invent 州/郡 keys")
+		failed += 1
+	## MapFactory must not load/apply legacy admin_hex (comments OK; code paths not).
+	var mf_src := FileAccess.get_file_as_string("res://scripts/map_factory.gd")
+	if mf_src.find("apply_admin_to_hexes") >= 0 or mf_src.find("ADMIN_HEX") >= 0:
+		push_error("map_factory still has apply_admin_to_hexes / ADMIN_HEX")
+		failed += 1
+	if mf_src.find("res://data/admin_hex.json") >= 0:
+		push_error("map_factory still hardcodes admin_hex path")
+		failed += 1
 	## Camera: micro band still exists; admin display is not zoom-driven.
 	if not is_equal_approx(CameraLod.Z_HEX, 0.85):
 		push_error("Z_HEX unexpected")

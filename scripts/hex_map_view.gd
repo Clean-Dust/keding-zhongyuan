@@ -205,9 +205,9 @@ func _color_for_hex(h: Dictionary) -> Color:
 		return SEA_BLUE
 	if display_mode == MODE_TERRAIN:
 		return _terrain_color(h)
-	## Until counties are hand-filled: bare land (same as 地形), not Voronoi gray blobs.
+	## Roster may exist, but zero hexes filled → flat unpainted gray (not Voronoi / not 地形 green).
 	if not _has_xian_fills:
-		return _terrain_color(h)
+		return UNASSIGNED_GRAY
 	var aid := _admin_id_of(h)
 	if aid == "":
 		return UNASSIGNED_GRAY
@@ -282,7 +282,10 @@ func _rebuild_pref_labels() -> void:
 	if world == null:
 		return
 	## Edge anchors only on 州 / 地形 (reduce clutter on 郡/县).
+	## When no 县 hexes are filled, hide anchors in admin modes so empty state is obvious.
 	if display_mode == MODE_JUN or display_mode == MODE_XIAN:
+		return
+	if display_mode != MODE_TERRAIN and not _has_xian_fills:
 		return
 	var s := _current_lod_scale()
 	for h in world.hexes:
@@ -365,13 +368,14 @@ func _draw() -> void:
 
 
 func _draw_empty_admin_hint(vis: Rect2) -> void:
+	## World-space backup; primary cue is HUD EmptyAdminHint (screen-fixed).
 	if display_mode == MODE_TERRAIN or _has_xian_fills:
 		return
-	var font_size := _world_font_px(28.0)
+	var font_size := _world_font_px(22.0)
 	var center := vis.get_center()
 	draw_string(
 		ThemeDB.fallback_font,
-		center + Vector2(-float(font_size) * 3.2, float(font_size) * 0.35),
+		center + Vector2(-float(font_size) * 3.5, float(font_size) * 0.35),
 		EMPTY_ADMIN_HINT,
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,

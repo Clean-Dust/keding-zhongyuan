@@ -255,9 +255,21 @@ func _set_display_mode(mode: String) -> void:
 	for k in _mode_buttons.keys():
 		var btn: Button = _mode_buttons[k]
 		btn.set_pressed_no_signal(str(k) == mode)
+	_update_empty_admin_hint()
 	if mode != "terrain" and not map_view.has_xian_fills():
 		_push_log("县范围尚未铺设（州/郡 = 县 hex 并集；名单见 counties_roster）")
 	_refresh_hud()
+
+
+func _update_empty_admin_hint() -> void:
+	var hint: Label = hud.get_node_or_null("EmptyAdminHint")
+	if hint == null:
+		return
+	var show_hint: bool = display_mode != "terrain" and not map_view.has_xian_fills()
+	hint.visible = show_hint
+	if show_hint:
+		var roster_n: int = CountiesRoster.county_count()
+		hint.text = "县范围尚未铺设（名单 %d 县 · 郡/州 = 县并集）" % roster_n
 
 
 func _wire_hud() -> void:
@@ -409,11 +421,19 @@ func _refresh_hud() -> void:
 	var paused := bool(world.time.get("paused", true))
 	var mode_names := {"zhou": "州", "jun": "郡", "xian": "县", "terrain": "地形"}
 	var mode_label: String = str(mode_names.get(display_mode, display_mode))
-	lod_l.text = "显示 %s · 缩放 %s · %s" % [
-		mode_label,
-		lod.to_upper(),
-		("暂停" if paused or speed == 0 else "%dx" % speed),
-	]
+	var empty_admin: bool = display_mode != "terrain" and not map_view.has_xian_fills()
+	if empty_admin:
+		lod_l.text = "显示 %s · 未铺设 · %s" % [
+			mode_label,
+			("暂停" if paused or speed == 0 else "%dx" % speed),
+		]
+	else:
+		lod_l.text = "显示 %s · 缩放 %s · %s" % [
+			mode_label,
+			lod.to_upper(),
+			("暂停" if paused or speed == 0 else "%dx" % speed),
+		]
+	_update_empty_admin_hint()
 	if world.micro_active or lod == "hex":
 		var side := world.get_faction(world.micro_side)
 		turn_l.text = "微观回合：%s（空格结束）" % str(side.get("name", ""))

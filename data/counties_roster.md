@@ -12,7 +12,7 @@
 3. 手工填写 hex 范围
 4. 郡/州 = 所辖县之并集
 
-> 禁止 Voronoi / CHGIS 程序化自动烘焙行政边界。旧 `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json` 为 CHGIS Voronoi/PIP **遗留资产**（`unused_for_rendering`），游戏不再用于涂色；郡/州 = 县 hex 并集。
+> 禁止 Voronoi / CHGIS 程序化自动烘焙行政边界。旧 `admin_*.json` 已清空为 retired stubs（`unused_for_rendering`，无 rings/PIP）；游戏永不加载。郡/州 = 已铺 `xian_id` 的县 hex 并集。
 
 ## 合计
 
