@@ -1,14 +1,17 @@
 extends Node2D
-## Dual-scale vertical slice controller — LOD: zhou → jun → xian → hex.
+## Dual-scale vertical slice — admin display modes via buttons; wheel only zooms.
 
 const HEX_SIZE := 36.0
 
 var world: WorldState
 var strategic := StrategicSim.new()
 var micro := MicroCombat.new()
-var lod: String = "zhou"
+## Zoom band for micro/time (not admin paint).
+var lod: String = "far"
+var display_mode: String = "zhou"
 var _was_hex := false
 var _log: PackedStringArray = []
+var _mode_buttons: Dictionary = {} ## mode -> Button
 
 @onready var camera: CameraLod = $CameraLod
 @onready var map_view: Node2D = $HexMapView
@@ -31,21 +34,21 @@ func _ready() -> void:
 	micro.setup(world)
 	map_view.setup(world)
 	map_view.bind_camera(camera)
-	camera.lod_changed.connect(_on_lod_changed)
+	camera.lod_changed.connect(_on_zoom_band_changed)
 	world.changed.connect(_refresh_hud)
 	world.day_advanced.connect(func(d): _push_log("第 %d 天破晓" % d))
 	world.contact_changed.connect(func(): _push_log("接敌！滚轮放大进入 hex 交战"))
 	micro.log_line.connect(_push_log)
 	micro.turn_changed.connect(func(side): _push_log("微观回合：%s" % world.get_faction(side).get("name", side)))
-	var focus := MapFactory.cluster_focus_axial()
-	camera.position = Hex.to_pixel(focus + Vector2i(2, 2), HEX_SIZE)
-	camera.set_map_bounds(Hex.map_pixel_rect(HEX_SIZE, world.map_w, world.map_h))
-	## Start at 州 LOD (far).
-	camera.set_lod_scale(7.0)
+	## Frame whole map so land/sea/州 are visible (fixes near-black launch).
+	var map_rect := Hex.map_pixel_rect(HEX_SIZE, world.map_w, world.map_h)
+	camera.frame_map(map_rect, 1.06)
+	_build_mode_buttons()
 	_build_settings_rows()
 	_wire_hud()
+	_set_display_mode("zhou")
 	_refresh_hud()
-	_push_log("160×%d 东汉十三州。Esc 打开菜单 → 设置调灵敏度。滚轮：州→郡→县→hex。" % Hex.MAP_H)
+	_push_log("160×%d。顶栏切换 州/郡/县/地形；滚轮只缩放。Esc → 设置。" % Hex.MAP_H)
 	world.save_to_path("user://dual_scale_debug.json")
 
 
@@ -90,7 +93,7 @@ func _handle_click(global_pos: Vector2) -> void:
 	var cell: Vector2i = map_view.cell_at_global(global_pos)
 	if not world.has_hex(cell):
 		return
-	if lod == "hex" or world.micro_active or lod == "xian":
+	if lod == "hex" or world.micro_active or lod == "near":
 		_click_micro_or_near(cell)
 	else:
 		_click_macro(cell)
@@ -179,21 +182,57 @@ func _refresh_selection_highlights() -> void:
 	world.changed.emit()
 
 
-func _on_lod_changed(new_lod: String, _scale: float) -> void:
+func _on_zoom_band_changed(new_lod: String, _scale: float) -> void:
 	lod = new_lod
-	map_view.set_lod(new_lod)
 	if new_lod == "hex":
 		if not world.micro_active:
 			micro.enter_micro()
-			_push_log("HEX LOD：战略时间自动暂停")
+			_push_log("近距：战略时间自动暂停（hex 交战）")
 		_was_hex = true
 	elif _was_hex and new_lod != "hex":
 		micro.exit_micro_keep_state()
 		world.force_pause_for_micro(false)
 		world.set_speed(0)
-		_push_log("离开 hex：战果已写入。选择速度继续时间。")
+		_push_log("离开近距：战果已写入。选择速度继续时间。")
 		_was_hex = false
 		world.mark_contacts()
+	_refresh_hud()
+
+
+func _build_mode_buttons() -> void:
+	var bar: Panel = hud.get_node("TopBar")
+	var modes := [
+		["zhou", "州"],
+		["jun", "郡"],
+		["xian", "县"],
+		["terrain", "地形"],
+	]
+	var x := 520.0
+	for m in modes:
+		var mode: String = m[0]
+		var label: String = m[1]
+		var btn := Button.new()
+		btn.text = label
+		btn.position = Vector2(x, 10)
+		btn.size = Vector2(48, 32)
+		btn.toggle_mode = true
+		btn.focus_mode = Control.FOCUS_NONE
+		var captured := mode
+		btn.pressed.connect(func(): _set_display_mode(captured))
+		bar.add_child(btn)
+		_mode_buttons[mode] = btn
+		x += 52.0
+	## Shift turn label right of mode buttons.
+	var turn_l: Label = hud.get_node("TopBar/TurnLabel")
+	turn_l.position.x = x + 8.0
+
+
+func _set_display_mode(mode: String) -> void:
+	display_mode = mode
+	map_view.set_display_mode(mode)
+	for k in _mode_buttons.keys():
+		var btn: Button = _mode_buttons[k]
+		btn.set_pressed_no_signal(str(k) == mode)
 	_refresh_hud()
 
 
@@ -246,7 +285,7 @@ func _build_settings_rows() -> void:
 		slider.min_value = 1
 		slider.max_value = 10
 		slider.step = 1
-		slider.round_values = true
+		## Godot 4: step already snaps; round_values was removed (was crashing _ready).
 		slider.value = float(_input_settings.get_tier(key))
 		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var k := str(key)
@@ -343,13 +382,19 @@ func _refresh_hud() -> void:
 	]
 	var speed := int(world.time.get("speed", 0))
 	var paused := bool(world.time.get("paused", true))
-	lod_l.text = "LOD %s · %s" % [lod.to_upper(), ("暂停" if paused or speed == 0 else "%dx" % speed)]
+	var mode_names := {"zhou": "州", "jun": "郡", "xian": "县", "terrain": "地形"}
+	var mode_label: String = str(mode_names.get(display_mode, display_mode))
+	lod_l.text = "显示 %s · 缩放 %s · %s" % [
+		mode_label,
+		lod.to_upper(),
+		("暂停" if paused or speed == 0 else "%dx" % speed),
+	]
 	if world.micro_active or lod == "hex":
 		var side := world.get_faction(world.micro_side)
 		turn_l.text = "微观回合：%s（空格结束）" % str(side.get("name", ""))
 		hud.get_node("TopBar/BtnEndTurn").visible = true
 	else:
-		turn_l.text = "%s：选部队 → 点目标行军" % lod
+		turn_l.text = "选部队 → 点目标行军"
 		hud.get_node("TopBar/BtnEndTurn").visible = false
 	for b in ["BtnPause", "Btn1x", "Btn2x", "Btn3x"]:
 		hud.get_node("TopBar/%s" % b).disabled = lod == "hex" or world.micro_active

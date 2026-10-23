@@ -1,15 +1,22 @@
 extends Node2D
-## Batched map draw: sea blue always; admin gray by LOD; hex grid only at HEX.
+## Hex-based map draw. Display mode (州/郡/县/地形) is UI-driven — not zoom.
 
 const HEX_SIZE := 36.0
 const HEX_DRAW := HEX_SIZE * 0.96
 const VIEW_REDRAW_EPS_SQ := 4.0
 const PLAINS_GREEN := Color(0.32, 0.48, 0.30)
 const SEA_BLUE := Color(0.20, 0.40, 0.58)
-const ADMIN_FILL := Color(0.58, 0.58, 0.55, 0.78)
-const ADMIN_BORDER := Color(0.30, 0.30, 0.28, 0.95)
-const ADMIN_NAME := Color(0.12, 0.12, 0.10, 0.92)
+const CITY_GREEN := Color(0.38, 0.52, 0.34)
+const UNASSIGNED_GRAY := Color(0.52, 0.52, 0.50)
+const ADMIN_BORDER := Color(0.22, 0.22, 0.20, 0.45)
+const ADMIN_NAME := Color(0.10, 0.10, 0.08, 0.92)
 const DRAW_MAP_MARKERS := false
+
+## Display modes (buttons): zhou | jun | xian | terrain
+const MODE_ZHOU := "zhou"
+const MODE_JUN := "jun"
+const MODE_XIAN := "xian"
+const MODE_TERRAIN := "terrain"
 
 const EXTREME_ANCHOR_IDS := {
 	"dunhuang": true, "yongchang": true, "jiaozhi": true,
@@ -17,7 +24,7 @@ const EXTREME_ANCHOR_IDS := {
 }
 
 var world: WorldState
-var lod: String = "zhou"
+var display_mode: String = MODE_ZHOU
 var hover_cell: Vector2i = Vector2i(9999, 9999)
 
 var _corner_off: PackedVector2Array = PackedVector2Array()
@@ -30,11 +37,8 @@ var _last_draw_cam_pos: Vector2 = Vector2(INF, INF)
 var _last_draw_lod_scale: float = -1.0
 var _redraw_scheduled: bool = false
 
-## Pre-projected admin polygons: {name, centroid: Vector2, polys: Array[PackedVector2Array]}
-var _admin_zhou: Array = []
-var _admin_jun: Array = []
-var _admin_xian: Array = []
-var _admin_loaded: bool = false
+## Label entries for current admin mode: {name, pos: Vector2}
+var _admin_labels: Array = []
 
 @onready var labels_root: Node2D = $Labels
 
@@ -42,10 +46,10 @@ var _admin_loaded: bool = false
 func setup(ws: WorldState) -> void:
 	world = ws
 	_init_geometry()
-	_ensure_admin_loaded()
 	_rebuild_faction_colors()
 	_rebuild_color_caches()
 	_rebuild_highlight_set()
+	_rebuild_admin_labels()
 	if not world.changed.is_connected(_on_world_changed):
 		world.changed.connect(_on_world_changed)
 	_cam = get_viewport().get_camera_2d()
@@ -59,10 +63,21 @@ func bind_camera(cam: CameraLod) -> void:
 		cam.view_changed.connect(_on_view_changed)
 
 
-func set_lod(new_lod: String) -> void:
-	lod = new_lod
+func set_display_mode(mode: String) -> void:
+	if mode != MODE_ZHOU and mode != MODE_JUN and mode != MODE_XIAN and mode != MODE_TERRAIN:
+		mode = MODE_ZHOU
+	if display_mode == mode:
+		return
+	display_mode = mode
+	_rebuild_color_caches()
+	_rebuild_admin_labels()
 	_rebuild_pref_labels()
 	queue_redraw()
+
+
+## Legacy alias — zoom no longer drives admin paint.
+func set_lod(_new_lod: String) -> void:
+	pass
 
 
 func set_hover(cell: Vector2i) -> void:
@@ -76,6 +91,7 @@ func _on_world_changed() -> void:
 	_rebuild_faction_colors()
 	_rebuild_color_caches()
 	_rebuild_highlight_set()
+	_rebuild_admin_labels()
 	_rebuild_pref_labels()
 	queue_redraw()
 
@@ -110,7 +126,6 @@ func _current_lod_scale() -> float:
 	return 1.0
 
 
-## World-space font so on-screen px ≈ screen_px (camera zoom = 1/lod_scale).
 func _world_font_px(screen_px: float) -> int:
 	return maxi(10, int(round(screen_px * _current_lod_scale())))
 
@@ -120,72 +135,6 @@ func _init_geometry() -> void:
 	_scratch_pts.resize(6)
 	for i in 6:
 		_scratch_pts[i] = _corner_off[i]
-
-
-func _ensure_admin_loaded() -> void:
-	if _admin_loaded:
-		return
-	_admin_zhou = _load_admin_tier("res://data/admin_zhou.json")
-	_admin_jun = _load_admin_tier("res://data/admin_jun.json")
-	_admin_xian = _load_admin_tier("res://data/admin_xian.json")
-	_admin_loaded = true
-
-
-func _load_admin_tier(path: String) -> Array:
-	var out: Array = []
-	if not FileAccess.file_exists(path):
-		push_warning("missing admin data %s" % path)
-		return out
-	var txt := FileAccess.get_file_as_string(path)
-	var data: Variant = JSON.parse_string(txt)
-	if typeof(data) != TYPE_DICTIONARY:
-		return out
-	var root: Dictionary = data
-	for f_any in root.get("features", []):
-		if typeof(f_any) != TYPE_DICTIONARY:
-			continue
-		var f: Dictionary = f_any
-		var rings: Array = f.get("rings", [])
-		if rings.is_empty():
-			continue
-		var polys: Array = []
-		for ring_any in rings:
-			if typeof(ring_any) != TYPE_ARRAY:
-				continue
-			var ring: Array = ring_any
-			var pts := PackedVector2Array()
-			for p_any in ring:
-				if typeof(p_any) != TYPE_ARRAY:
-					continue
-				var p: Array = p_any
-				if p.size() < 2:
-					continue
-				pts.append(Hex.lonlat_to_pixel(float(p[0]), float(p[1]), HEX_SIZE))
-			if pts.size() >= 3:
-				polys.append(pts)
-		if polys.is_empty():
-			continue
-		var cent := Vector2.ZERO
-		var c_raw: Variant = f.get("centroid", null)
-		if typeof(c_raw) == TYPE_ARRAY and (c_raw as Array).size() >= 2:
-			var ca: Array = c_raw
-			cent = Hex.lonlat_to_pixel(float(ca[0]), float(ca[1]), HEX_SIZE)
-		else:
-			## Fallback: average first ring.
-			var acc := Vector2.ZERO
-			var n := 0
-			var first_poly: PackedVector2Array = polys[0]
-			for pt in first_poly:
-				acc += pt
-				n += 1
-			if n > 0:
-				cent = acc / float(n)
-		out.append({
-			"name": str(f.get("name", "")),
-			"centroid": cent,
-			"polys": polys,
-		})
-	return out
 
 
 func _rebuild_faction_colors() -> void:
@@ -204,14 +153,88 @@ func _rebuild_highlight_set() -> void:
 		_highlight_set[Hex.key(c.x, c.y)] = true
 
 
+func _admin_id_of(h: Dictionary) -> String:
+	match display_mode:
+		MODE_ZHOU:
+			return str(h.get("zhou_id", ""))
+		MODE_JUN:
+			return str(h.get("jun_id", ""))
+		MODE_XIAN:
+			return str(h.get("xian_id", ""))
+		_:
+			return ""
+
+
+func _admin_name_of(h: Dictionary) -> String:
+	match display_mode:
+		MODE_ZHOU:
+			return str(h.get("zhou_name", ""))
+		MODE_JUN:
+			return str(h.get("jun_name", ""))
+		MODE_XIAN:
+			return str(h.get("xian_name", ""))
+		_:
+			return ""
+
+
+func _tint_for_admin_id(aid: String) -> Color:
+	if aid == "":
+		return UNASSIGNED_GRAY
+	## Stable muted HSV from id hash.
+	var hv: int = absi(int(hash(aid)))
+	var hue := float(hv % 360) / 360.0
+	var sat := 0.22 + float((hv / 360) % 40) / 200.0
+	var val := 0.55 + float((hv / 14400) % 30) / 150.0
+	return Color.from_hsv(hue, sat, val)
+
+
+func _color_for_hex(h: Dictionary) -> Color:
+	var terrain := str(h.get("terrain", "plain"))
+	if terrain == "water":
+		return SEA_BLUE
+	if display_mode == MODE_TERRAIN:
+		return CITY_GREEN if terrain == "city" else PLAINS_GREEN
+	return _tint_for_admin_id(_admin_id_of(h))
+
+
 func _rebuild_color_caches() -> void:
 	if world == null:
 		return
 	var n := world.hexes.size()
 	_fill_hex.resize(n)
 	for i in n:
-		var h: Dictionary = world.hexes[i]
-		_fill_hex[i] = SEA_BLUE if str(h.get("terrain", "")) == "water" else PLAINS_GREEN
+		_fill_hex[i] = _color_for_hex(world.hexes[i])
+
+
+func _rebuild_admin_labels() -> void:
+	_admin_labels.clear()
+	if world == null or display_mode == MODE_TERRAIN:
+		return
+	## Accumulate pixel centroids per admin id.
+	var acc: Dictionary = {} ## id -> {name, sum: Vector2, n: int}
+	for h in world.hexes:
+		if str(h.get("terrain", "")) == "water":
+			continue
+		var aid := _admin_id_of(h)
+		if aid == "":
+			continue
+		var cell := Vector2i(int(h.q), int(h.r))
+		var px := Hex.to_pixel(cell, HEX_SIZE)
+		if not acc.has(aid):
+			acc[aid] = {"name": _admin_name_of(h), "sum": px, "n": 1}
+		else:
+			var e: Dictionary = acc[aid]
+			e.sum = e.sum + px
+			e.n = int(e.n) + 1
+	for aid in acc.keys():
+		var e2: Dictionary = acc[aid]
+		var n2: int = int(e2.n)
+		if n2 <= 0:
+			continue
+		_admin_labels.append({
+			"name": str(e2.name),
+			"pos": e2.sum / float(n2),
+		})
 
 
 func _rebuild_pref_labels() -> void:
@@ -219,14 +242,15 @@ func _rebuild_pref_labels() -> void:
 		c.queue_free()
 	if world == null:
 		return
-	## Edge anchors: fewer on ZHOU to reduce clutter.
-	## Holder scaled by lod_scale → roughly constant screen size while zooming.
+	## Edge anchors only on 州 / 地形 (reduce clutter on 郡/县).
+	if display_mode == MODE_JUN or display_mode == MODE_XIAN:
+		return
 	var s := _current_lod_scale()
 	for h in world.hexes:
 		if not bool(h.get("is_anchor", false)):
 			continue
 		var pid := str(h.get("prefecture_id", ""))
-		if lod == "zhou" and not EXTREME_ANCHOR_IDS.has(pid):
+		if display_mode == MODE_ZHOU and not EXTREME_ANCHOR_IDS.has(pid):
 			continue
 		var cell := Vector2i(int(h.q), int(h.r))
 		var pos := Hex.to_pixel(cell, HEX_SIZE)
@@ -244,9 +268,7 @@ func _rebuild_pref_labels() -> void:
 		var lab := Label.new()
 		lab.text = str(h.get("prefecture_name", ""))
 		lab.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		## Screen-ish size inside scaled holder (zhou a bit larger).
-		var fs := 16 if lod == "zhou" else 14
-		lab.add_theme_font_size_override("font_size", fs)
+		lab.add_theme_font_size_override("font_size", 14)
 		lab.add_theme_color_override("font_color", Color(0.92, 0.90, 0.82, 0.95))
 		lab.add_theme_color_override("font_outline_color", Color(0.05, 0.08, 0.04, 0.9))
 		lab.add_theme_constant_override("outline_size", 3)
@@ -288,16 +310,10 @@ func _draw() -> void:
 		_last_draw_cam_pos = _cam.global_position
 		_last_draw_lod_scale = 1.0 / maxf(_cam.zoom.x, 0.001)
 	var vis := _visible_world_rect()
-	## Sea underlay — admin must never paint over ocean.
+	## Full-map sea underlay so off-hex edges stay blue (not clear-color black).
 	draw_rect(Hex.map_pixel_rect(HEX_SIZE, world.map_w, world.map_h), SEA_BLUE)
-
-	if lod == "hex":
-		_draw_hex_layer(vis)
-	else:
-		_draw_admin_layer(vis)
-		## Re-stamp water hexes so any admin bleed over sea is corrected.
-		_stamp_water_hexes(vis)
-
+	_draw_hex_layer(vis)
+	_draw_admin_names(vis)
 	if DRAW_MAP_MARKERS and world.path_preview.size() >= 2:
 		for i in range(world.path_preview.size() - 1):
 			var a := Hex.to_pixel(world.path_preview[i], HEX_SIZE)
@@ -307,81 +323,34 @@ func _draw() -> void:
 		_draw_units()
 
 
-func _admin_list_for_lod() -> Array:
-	match lod:
-		"zhou":
-			return _admin_zhou
-		"jun":
-			return _admin_jun
-		"xian":
-			return _admin_xian
-		_:
-			return []
-
-
-func _draw_admin_layer(vis: Rect2) -> void:
-	var feats: Array = _admin_list_for_lod()
-	## Target on-screen px; world font = screen_px * lod_scale (zoom-compensated).
-	var screen_px := 34.0 if lod == "zhou" else (24.0 if lod == "jun" else 18.0)
+func _draw_admin_names(vis: Rect2) -> void:
+	if display_mode == MODE_TERRAIN or _admin_labels.is_empty():
+		return
+	var screen_px := 34.0 if display_mode == MODE_ZHOU else (22.0 if display_mode == MODE_JUN else 16.0)
 	var font_size := _world_font_px(screen_px)
-	var name_budget := 40 if lod == "zhou" else (80 if lod == "jun" else 120)
+	var budget := 40 if display_mode == MODE_ZHOU else (90 if display_mode == MODE_JUN else 140)
+	var pad := float(font_size) * 2.0
 	var named := 0
-	var pad := float(font_size) * 1.5
-	for f in feats:
-		var polys: Array = f.polys
-		var on_screen := false
-		for poly in polys:
-			## Quick cull: any vertex in vis expanded.
-			for pt in poly:
-				if vis.has_point(pt):
-					on_screen = true
-					break
-			if on_screen:
-				break
-			## Also: centroid in view.
-			if vis.has_point(f.centroid):
-				on_screen = true
-		if not on_screen and lod != "zhou":
-			## Far 州 always draw (few features); others cull hard.
+	var grown := vis.grow(pad)
+	for lab in _admin_labels:
+		if named >= budget:
+			break
+		var pos: Vector2 = lab.pos
+		if not grown.has_point(pos):
 			continue
-		for poly in polys:
-			if poly.size() >= 3:
-				draw_colored_polygon(poly, ADMIN_FILL)
-				for i in poly.size():
-					draw_line(poly[i], poly[(i + 1) % poly.size()], ADMIN_BORDER, 1.5 if lod == "zhou" else 1.0, false)
-		if named < name_budget and vis.grow(pad).has_point(f.centroid):
-			var nm: String = str(f.name)
-			if lod == "xian" and nm.length() > 4:
-				continue
-			draw_string(
-				ThemeDB.fallback_font,
-				f.centroid + Vector2(-float(font_size) * 0.55, float(font_size) * 0.35),
-				nm,
-				HORIZONTAL_ALIGNMENT_LEFT,
-				-1,
-				font_size,
-				ADMIN_NAME
-			)
-			named += 1
-
-
-func _stamp_water_hexes(vis: Rect2) -> void:
-	var w := world.map_w
-	var h := world.map_h
-	var bounds := _visible_offset_bounds(vis, w, h)
-	var sx := HEX_SIZE * sqrt(3.0)
-	var sy := HEX_SIZE * 1.5
-	for row in range(bounds.y, bounds.w + 1):
-		var x_bias := 0.0 if (row & 1) == 0 else -0.5 * sx
-		var cy := sy * float(row)
-		for col in range(bounds.x, bounds.z + 1):
-			var idx := row * w + col
-			if idx < 0 or idx >= _fill_hex.size():
-				continue
-			if _fill_hex[idx] != SEA_BLUE:
-				continue
-			var cx := sx * float(col) + x_bias
-			_draw_hex_fill(Vector2(cx, cy), SEA_BLUE)
+		var nm: String = str(lab.name)
+		if display_mode == MODE_XIAN and nm.length() > 4:
+			continue
+		draw_string(
+			ThemeDB.fallback_font,
+			pos + Vector2(-float(font_size) * 0.55, float(font_size) * 0.35),
+			nm,
+			HORIZONTAL_ALIGNMENT_LEFT,
+			-1,
+			font_size,
+			ADMIN_NAME
+		)
+		named += 1
 
 
 func _draw_hex_layer(vis: Rect2) -> void:
@@ -394,6 +363,11 @@ func _draw_hex_layer(vis: Rect2) -> void:
 	var vis_r := vis.end.x
 	var vis_t := vis.position.y
 	var vis_b := vis.end.y
+	var lod_s := _current_lod_scale()
+	## Far zoom: axis-aligned rects (faster); near: true hexes + borders.
+	var use_rects := lod_s >= 4.0
+	var show_borders := true
+	var border_w := 1.2 if display_mode == MODE_TERRAIN else 0.7
 	for row in range(bounds.y, bounds.w + 1):
 		var x_bias := 0.0 if (row & 1) == 0 else -0.5 * sx
 		var cy := sy * float(row)
@@ -414,9 +388,12 @@ func _draw_hex_layer(vis: Rect2) -> void:
 					fill = fill.lightened(0.12)
 				if _highlight_set.has(Hex.key(cell.x, cell.y)):
 					fill = fill.lerp(Color(0.95, 0.85, 0.35), 0.45)
-			_draw_hex_fill(center, fill)
-			if fill != SEA_BLUE:
-				_draw_hex_border(center)
+			if use_rects:
+				draw_rect(Rect2(center.x - sx * 0.5, center.y - sy * 0.5, sx, sy), fill)
+			else:
+				_draw_hex_fill(center, fill)
+				if show_borders and fill != SEA_BLUE:
+					_draw_hex_border(center, border_w)
 
 
 ## Returns Vector4i(min_col, min_row, max_col, max_row) — uses x,y,z,w.
@@ -451,12 +428,11 @@ func _draw_hex_fill(center: Vector2, fill: Color) -> void:
 	draw_colored_polygon(_scratch_pts, fill)
 
 
-func _draw_hex_border(center: Vector2) -> void:
-	var border := Color(0.22, 0.34, 0.20, 0.55)
+func _draw_hex_border(center: Vector2, width: float = 1.0) -> void:
 	for i in 6:
 		_scratch_pts[i] = center + _corner_off[i]
 	for i in 6:
-		draw_line(_scratch_pts[i], _scratch_pts[(i + 1) % 6], border, 1.0, false)
+		draw_line(_scratch_pts[i], _scratch_pts[(i + 1) % 6], ADMIN_BORDER, width, false)
 
 
 func _draw_units() -> void:
@@ -472,7 +448,7 @@ func _draw_units() -> void:
 		var cell := Hex.from_key(str(k))
 		var center := Hex.to_pixel(cell, HEX_SIZE)
 		var list: Array = stacks[k]
-		if lod != "hex":
+		if _current_lod_scale() > CameraLod.Z_HEX:
 			_draw_stack_icon(center, list)
 		else:
 			for i in list.size():

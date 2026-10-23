@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless smoke: coast, admin counts, LOD thresholds, tick, save/load.
+## Headless smoke: coast, hex admin ids, display modes, tick, save/load.
 
 
 func _init() -> void:
@@ -17,13 +17,34 @@ func _init() -> void:
 		failed += 1
 	var land_n := 0
 	var water_n := 0
+	var zhou_n := 0
+	var jun_n := 0
+	var xian_n := 0
+	var zhou_ids: Dictionary = {}
 	for h in ws.hexes:
 		if str(h.get("terrain", "")) == "water":
 			water_n += 1
+			if str(h.get("zhou_id", "")) != "":
+				push_error("water hex has zhou_id")
+				failed += 1
+				break
 		else:
 			land_n += 1
+			if str(h.get("zhou_id", "")) != "":
+				zhou_n += 1
+				zhou_ids[str(h.zhou_id)] = true
+			if str(h.get("jun_id", "")) != "":
+				jun_n += 1
+			if str(h.get("xian_id", "")) != "":
+				xian_n += 1
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
+		failed += 1
+	if zhou_n < 10000 or jun_n < 10000 or xian_n < 10000:
+		push_error("admin hex assign low zhou=%d jun=%d xian=%d" % [zhou_n, jun_n, xian_n])
+		failed += 1
+	if zhou_ids.size() < 10 or zhou_ids.size() > 13:
+		push_error("expected ~13 州 ids on land, got %d" % zhou_ids.size())
 		failed += 1
 	## Extreme anchors on nearest hex (row 0 = north); 160×160 south to 象林.
 	var extremes := {
@@ -48,36 +69,34 @@ func _init() -> void:
 	if not is_equal_approx(p0.x, p2.x) or is_equal_approx(p0.x, p1.x):
 		push_error("even-r stagger failed p0=%s p1=%s p2=%s" % [p0, p1, p2])
 		failed += 1
-	## Admin JSON present.
-	for path in ["res://data/admin_zhou.json", "res://data/admin_jun.json", "res://data/admin_xian.json", "res://data/coast_mask.bin"]:
+	for path in [
+		"res://data/admin_zhou.json",
+		"res://data/admin_jun.json",
+		"res://data/admin_xian.json",
+		"res://data/admin_hex.json",
+		"res://data/coast_mask.bin",
+	]:
 		if not FileAccess.file_exists(path):
 			push_error("missing %s" % path)
 			failed += 1
-	var zhou: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/admin_zhou.json"))
-	var jun: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/admin_jun.json"))
-	var xian: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/admin_xian.json"))
-	var zhou_n := 0
-	var jun_n := 0
-	var xian_n := 0
-	if typeof(zhou) == TYPE_DICTIONARY:
-		zhou_n = (zhou.get("features", []) as Array).size()
-	if typeof(jun) == TYPE_DICTIONARY:
-		jun_n = int(jun.get("feature_count", (jun.get("features", []) as Array).size()))
-	if typeof(xian) == TYPE_DICTIONARY:
-		xian_n = int(xian.get("feature_count", (xian.get("features", []) as Array).size()))
-	if zhou_n != 13:
-		push_error("expected 13 州, got %d" % zhou_n)
-		failed += 1
-	if jun_n < 50 or xian_n < 500:
-		push_error("admin counts low jun=%d xian=%d" % [jun_n, xian_n])
-		failed += 1
-	## LOD thresholds.
-	if not is_equal_approx(CameraLod.Z_HEX, 0.85) or not is_equal_approx(CameraLod.Z_XIAN, 2.2) or not is_equal_approx(CameraLod.Z_JUN, 5.0):
-		push_error("LOD thresholds unexpected")
+	## Camera: micro band still exists; admin display is not zoom-driven.
+	if not is_equal_approx(CameraLod.Z_HEX, 0.85):
+		push_error("Z_HEX unexpected")
 		failed += 1
 	if CameraLod.WHEEL_STEP < 0.2:
 		push_error("WHEEL_STEP too small: %s" % CameraLod.WHEEL_STEP)
 		failed += 1
+	## Camera framing helpers exist.
+	var cam := CameraLod.new()
+	var rect := Hex.map_pixel_rect(36.0, Hex.MAP_W, Hex.MAP_H)
+	cam.frame_map(rect, 1.06)
+	if cam.lod_scale < 8.0:
+		push_error("frame_map lod_scale too close: %s" % cam.lod_scale)
+		failed += 1
+	if cam.position.distance_to(rect.get_center()) > 2.0:
+		push_error("frame_map center off: %s vs %s" % [cam.position, rect.get_center()])
+		failed += 1
+	cam.free()
 	var Sens := preload("res://scripts/input_settings.gd")
 	var sens = Sens.new()
 	sens.from_dict({})
@@ -132,19 +151,24 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast reapplied on load.
+		## Coast + admin reapplied on load.
 		var w2 := 0
+		var z2 := 0
 		for h2 in ws2.hexes:
 			if str(h2.get("terrain", "")) == "water":
 				w2 += 1
+			elif str(h2.get("zhou_id", "")) != "":
+				z2 += 1
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
+		if z2 < 10000:
+			push_error("load lost admin zhou=%d" % z2)
+			failed += 1
 	print(
-		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d zhou=%d jun=%d xian=%d lod=%.2f/%.2f/%.2f" % [
+		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d admin_zhou=%d/%d jun=%d xian=%d z_hex=%.2f" % [
 			1 if failed == 0 else 0, failed, ws.hexes.size(), ws.map_w, ws.map_h,
-			land_n, water_n, zhou_n, jun_n, xian_n,
-			CameraLod.Z_HEX, CameraLod.Z_XIAN, CameraLod.Z_JUN,
+			land_n, water_n, zhou_n, zhou_ids.size(), jun_n, xian_n, CameraLod.Z_HEX,
 		]
 	)
 	call_deferred("quit", 1 if failed else 0)

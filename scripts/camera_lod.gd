@@ -1,20 +1,21 @@
 class_name CameraLod
 extends Camera2D
-## Four-tier map LOD by lod_scale (larger = more zoomed out).
+## Camera zoom only (lod_scale larger = farther). Admin paint is UI mode, not zoom.
 ## Godot Camera2D.zoom is inverted: zoom = 1/lod_scale.
 ## Pan/zoom rates come from InputSettings tiers (1–10).
+## Zoom band ≤ Z_HEX still gates micro combat / strategic-time pause.
 
 signal lod_changed(lod: String, lod_scale: float)
 signal view_changed
 
-## Far → near thresholds (calibrated for 160×160).
-const Z_HEX := 0.85 ## <= HEX: land/sea hex + grid
-const Z_XIAN := 2.2 ## <= XIAN: county fills
-const Z_JUN := 5.0 ## <= JUN: commandery fills
-## > Z_JUN → ZHOU (十三州)
+## Near threshold for micro combat (zoom band only — not admin display).
+const Z_HEX := 0.85
+## Soft bands kept for smoke / legacy call sites (not used for map paint).
+const Z_XIAN := 2.2
+const Z_JUN := 5.0
 
 const LOD_MIN := 0.35
-const LOD_MAX := 14.0
+const LOD_MAX := 16.0
 ## Fallback wheel step if settings missing (matches tier ~7).
 const WHEEL_STEP := 0.28
 const ZOOM_SMOOTH := 18.0
@@ -45,6 +46,23 @@ func set_map_bounds(rect: Rect2) -> void:
 	_bounds = rect
 	_clamp_position()
 	view_changed.emit()
+
+
+## Center on map and pick lod_scale so the full rect fits the viewport (with margin).
+func frame_map(rect: Rect2, margin: float = 1.08) -> void:
+	_bounds = rect
+	if rect.size == Vector2.ZERO:
+		return
+	position = rect.get_center()
+	var vp := Vector2(1280, 720)
+	var tree_vp := get_viewport()
+	if tree_vp != null:
+		var vs := tree_vp.get_visible_rect().size
+		if vs.x >= 1.0 and vs.y >= 1.0:
+			vp = vs
+	var fit_x := rect.size.x * margin / maxf(vp.x, 1.0)
+	var fit_y := rect.size.y * margin / maxf(vp.y, 1.0)
+	set_lod_scale(maxf(fit_x, fit_y))
 
 
 func _settings_safe():
@@ -135,19 +153,19 @@ func _apply_zoom() -> void:
 
 
 func current_lod() -> String:
+	## Zoom band for micro/time only (display mode is separate).
 	if lod_scale <= Z_HEX:
 		return "hex"
 	if lod_scale <= Z_XIAN:
-		return "xian"
+		return "near"
 	if lod_scale <= Z_JUN:
-		return "jun"
-	return "zhou"
+		return "mid"
+	return "far"
 
 
 func is_macro_time_allowed() -> bool:
-	## Strategic time at 州/郡 (and soft at 县); hex = micro pause.
-	var lod := current_lod()
-	return lod == "zhou" or lod == "jun" or lod == "xian"
+	## Strategic time when not in close-up hex band.
+	return not is_hex_lod()
 
 
 func is_hex_lod() -> bool:
