@@ -29,8 +29,8 @@ Optional: open `project.godot` in the Godot editor and press Play.
 |-------|--------|
 | Top bar **州 / 郡 / 县 / 地形** | Display mode (which admin/terrain paint) |
 | Mouse wheel up / down | Zoom in / out only (does **not** change display mode) |
-| WASD / arrows / middle-drag | Pan |
-| LMB | Select unit; second click issues move order; near/hex: move / attack |
+| **左键拖拽** / middle-drag / WASD / arrows | Pan map (primary: left-drag; Esc → 设置 → **鼠标拖拽** sensitivity) |
+| LMB short click | Select unit; second click issues move order; near/hex: move / attack |
 | RMB | Clear selection |
 | Space | End micro turn (AI acts) |
 | Esc | Pause menu → **设置…** for sensitivity tiers (1–10); resume / save / load / quit |
@@ -69,7 +69,7 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 |----------|---------|--------|
 | 滚轮缩放 | **7** | Mouse-wheel zoom step size |
 | 键盘移动 | **3** | WASD / arrow pan (kept gentle) |
-| 鼠标拖拽 | **5** | Middle-mouse drag pan |
+| 鼠标拖拽 | **5** | 左键/中键拖拽平移速度 |
 | 视野补偿 | **5** | How much pan speeds up when zoomed out (mainly drag) |
 
 ## Map / factions (MVP)

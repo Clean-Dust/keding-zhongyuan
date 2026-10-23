@@ -23,12 +23,14 @@ anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 52.0
 grow_horizontal = 2
+mouse_filter = 2
 
 [node name="DayLabel" type="Label" parent="HUD/TopBar"]
 offset_left = 12.0
 offset_top = 14.0
 offset_right = 100.0
 offset_bottom = 40.0
+mouse_filter = 2
 text = "第 1 天"
 
 [node name="ResLabel" type="Label" parent="HUD/TopBar"]
@@ -36,6 +38,7 @@ offset_left = 110.0
 offset_top = 14.0
 offset_right = 300.0
 offset_bottom = 40.0
+mouse_filter = 2
 text = "粮 0 · 金 0"
 
 [node name="LodLabel" type="Label" parent="HUD/TopBar"]
@@ -43,6 +46,7 @@ offset_left = 310.0
 offset_top = 14.0
 offset_right = 510.0
 offset_bottom = 40.0
+mouse_filter = 2
 text = "显示 州"
 
 [node name="TurnLabel" type="Label" parent="HUD/TopBar"]
@@ -50,6 +54,7 @@ offset_left = 740.0
 offset_top = 14.0
 offset_right = 1000.0
 offset_bottom = 40.0
+mouse_filter = 2
 text = "宏观"
 
 [node name="BtnPause" type="Button" parent="HUD/TopBar"]
@@ -104,10 +109,12 @@ offset_top = -150.0
 offset_right = 420.0
 offset_bottom = -8.0
 grow_vertical = 0
+mouse_filter = 2
 
 [node name="LogLabel" type="Label" parent="HUD/LogPanel"]
 custom_minimum_size = Vector2(400, 130)
 layout_mode = 2
+mouse_filter = 2
 theme_override_font_sizes/font_size = 13
 text = "日志"
 autowrap_mode = 3
@@ -124,7 +131,8 @@ offset_right = -12.0
 offset_bottom = -12.0
 theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.85, 0.8, 0.65, 0.85)
-text = "顶栏 州/郡/县/地形 · 滚轮缩放 · 中键/WASD · Esc 菜单"
+mouse_filter = 2
+text = "左键拖拽平移 · 滚轮缩放 · Esc 设置调「鼠标拖拽」"
 horizontal_alignment = 2
 
 [node name="PauseMenu" type="ColorRect" parent="HUD"]

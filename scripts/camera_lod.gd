@@ -7,6 +7,8 @@ extends Camera2D
 
 signal lod_changed(lod: String, lod_scale: float)
 signal view_changed
+## Left button released without exceeding drag threshold (select / order).
+signal map_short_click(screen_pos: Vector2)
 
 ## Near threshold for micro combat (zoom band only — not admin display).
 const Z_HEX := 0.85
@@ -19,6 +21,8 @@ const LOD_MAX := 16.0
 ## Fallback wheel step if settings missing (matches tier ~7).
 const WHEEL_STEP := 0.28
 const ZOOM_SMOOTH := 18.0
+## Screen px before left-drag becomes pan (short click = select).
+const DRAG_THRESH_PX := 6.0
 
 ## Legacy aliases used by smoke / older call sites.
 const Z_MICRO := Z_HEX
@@ -31,6 +35,9 @@ var _target_lod_scale: float = 6.5
 var _last_lod: String = ""
 var _bounds: Rect2 = Rect2()
 var _settings ## InputSettings instance
+var _lmb_held: bool = false
+var _lmb_origin: Vector2 = Vector2.ZERO
+var _lmb_panning: bool = false
 
 
 func _ready() -> void:
@@ -107,19 +114,61 @@ func pan_factor() -> float:
 	return pow(maxf(lod_scale, LOD_MIN), float(s.drag_lod_exp())) * float(s.drag_mul())
 
 
+## Apply mouse-drag pan (uses 鼠标拖拽 + 视野补偿 tiers).
+func apply_drag_pan(relative: Vector2) -> void:
+	if relative == Vector2.ZERO:
+		return
+	position -= relative * pan_factor()
+	_clamp_position()
+	view_changed.emit()
+
+
+func clear_drag_state() -> void:
+	_lmb_held = false
+	_lmb_panning = false
+	_lmb_origin = Vector2.ZERO
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.pressed:
-		var step: float = float(_settings_safe().wheel_step())
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_nudge_zoom(-step)
+	if event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index == MOUSE_BUTTON_WHEEL_UP and mb.pressed:
+			_nudge_zoom(-float(_settings_safe().wheel_step()))
 			get_viewport().set_input_as_handled()
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_nudge_zoom(step)
+			return
+		if mb.button_index == MOUSE_BUTTON_WHEEL_DOWN and mb.pressed:
+			_nudge_zoom(float(_settings_safe().wheel_step()))
 			get_viewport().set_input_as_handled()
-	elif event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
-		position -= event.relative * pan_factor()
-		_clamp_position()
-		view_changed.emit()
+			return
+		if mb.button_index == MOUSE_BUTTON_MIDDLE:
+			## Middle-drag pans immediately; consume so UI does not steal.
+			get_viewport().set_input_as_handled()
+			return
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_lmb_held = true
+				_lmb_origin = mb.position
+				_lmb_panning = false
+			else:
+				if _lmb_held and not _lmb_panning:
+					map_short_click.emit(mb.position)
+				clear_drag_state()
+			get_viewport().set_input_as_handled()
+			return
+	elif event is InputEventMouseMotion:
+		var mm := event as InputEventMouseMotion
+		if Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE):
+			apply_drag_pan(mm.relative)
+			get_viewport().set_input_as_handled()
+			return
+		if _lmb_held and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			if not _lmb_panning:
+				if mm.position.distance_to(_lmb_origin) >= DRAG_THRESH_PX:
+					_lmb_panning = true
+			if _lmb_panning:
+				apply_drag_pan(mm.relative)
+				get_viewport().set_input_as_handled()
+
 
 
 func _nudge_zoom(delta_scale: float) -> void:

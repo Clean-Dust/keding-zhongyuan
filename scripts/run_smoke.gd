@@ -86,6 +86,9 @@ func _init() -> void:
 	if CameraLod.WHEEL_STEP < 0.2:
 		push_error("WHEEL_STEP too small: %s" % CameraLod.WHEEL_STEP)
 		failed += 1
+	if CameraLod.DRAG_THRESH_PX < 1.0:
+		push_error("DRAG_THRESH_PX missing/too small")
+		failed += 1
 	## Camera framing helpers exist.
 	var cam := CameraLod.new()
 	var rect := Hex.map_pixel_rect(36.0, Hex.MAP_W, Hex.MAP_H)
@@ -102,6 +105,10 @@ func _init() -> void:
 	sens.from_dict({})
 	if int(sens.wheel_zoom) != 7 or int(sens.keyboard_pan) != 3 or int(sens.mouse_drag) != 5 or int(sens.view_comp) != 5:
 		push_error("input settings defaults wrong")
+		failed += 1
+	## Left + middle drag share settings-driven pan_factor / drag_mul.
+	if float(sens.drag_mul()) < 0.3 or float(sens.drag_mul()) > 2.0:
+		push_error("drag_mul out of range: %s" % sens.drag_mul())
 		failed += 1
 	var wstep: float = float(sens.wheel_step())
 	var kb: float = float(sens.keyboard_base_speed())

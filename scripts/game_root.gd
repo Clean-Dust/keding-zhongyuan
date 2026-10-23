@@ -35,6 +35,7 @@ func _ready() -> void:
 	map_view.setup(world)
 	map_view.bind_camera(camera)
 	camera.lod_changed.connect(_on_zoom_band_changed)
+	camera.map_short_click.connect(_on_map_short_click)
 	world.changed.connect(_refresh_hud)
 	world.day_advanced.connect(func(d): _push_log("第 %d 天破晓" % d))
 	world.contact_changed.connect(func(): _push_log("接敌！滚轮放大进入 hex 交战"))
@@ -46,9 +47,10 @@ func _ready() -> void:
 	_build_mode_buttons()
 	_build_settings_rows()
 	_wire_hud()
+	_configure_hud_mouse_filters()
 	_set_display_mode("zhou")
 	_refresh_hud()
-	_push_log("160×%d。顶栏切换 州/郡/县/地形；滚轮只缩放。Esc → 设置。" % Hex.MAP_H)
+	_push_log("160×%d。左键拖拽平移；短按选择。顶栏 州/郡/县/地形；Esc → 设置调「鼠标拖拽」。" % Hex.MAP_H)
 	world.save_to_path("user://dual_scale_debug.json")
 
 
@@ -78,15 +80,35 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var cell: Vector2i = map_view.cell_at_global(get_global_mouse_position())
 		map_view.set_hover(cell if world.has_hex(cell) else Vector2i(9999, 9999))
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_handle_click(get_global_mouse_position())
-		get_viewport().set_input_as_handled()
+	## Left: CameraLod owns press→drag pan / short-click select (map_short_click).
 	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		world.selected_unit_id = ""
 		world.highlight_hexes.clear()
 		world.path_preview.clear()
 		world.changed.emit()
 		get_viewport().set_input_as_handled()
+
+
+func _on_map_short_click(_screen_pos: Vector2) -> void:
+	if pause_menu.visible:
+		return
+	_handle_click(get_global_mouse_position())
+
+
+## Decorative HUD must not eat map drag/click; buttons/sliders stay STOP.
+func _configure_hud_mouse_filters() -> void:
+	var ignore := Control.MOUSE_FILTER_IGNORE
+	for path in ["Hint", "LogPanel", "LogPanel/LogLabel"]:
+		var n: Control = hud.get_node_or_null(path)
+		if n:
+			n.mouse_filter = ignore
+	var bar: Panel = hud.get_node_or_null("TopBar")
+	if bar:
+		## Empty bar chrome passes through; child Buttons still receive clicks.
+		bar.mouse_filter = ignore
+		for c in bar.get_children():
+			if c is Label:
+				(c as Label).mouse_filter = ignore
 
 
 func _handle_click(global_pos: Vector2) -> void:
@@ -328,6 +350,7 @@ func _try_set_speed(s: int) -> void:
 
 func _set_pause_menu(on: bool) -> void:
 	pause_menu.visible = on
+	camera.clear_drag_state()
 	if on:
 		world.time.paused = true
 		_show_settings(false)

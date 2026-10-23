@@ -29,7 +29,7 @@ const LABELS := {
 const HINTS := {
 	"wheel_zoom": "每格滚轮缩放幅度",
 	"keyboard_pan": "WASD / 方向键平移速度",
-	"mouse_drag": "中键拖拽平移速度",
+	"mouse_drag": "左键/中键拖拽平移速度",
 	"view_comp": "缩小时平移加快的强度（主要影响拖拽）",
 }
 
