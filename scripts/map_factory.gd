@@ -2,8 +2,8 @@ class_name MapFactory
 extends RefCounted
 ## Builds 500×500 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
 ## Fixed square grid; south bbox to 象林 (docs/edge-cities-sanguo.md). Labels only at anchors.
-## Admin paint: per-hex `zhou_id` from Sinica ad0262 digitize (`zhou_jun_fills.*`); `jun_id` usually empty.
-## 县: no CHGIS county faces for Han — `xian_id` stays empty; seats are markers only.
+## Admin paint: per-hex `zhou_id` / `jun_id` from sanguo-map GeoJSON PIP (`zhou_jun_fills.*`).
+## 县: no county faces — `xian_id` stays empty; seats are CHGIS markers only.
 ## Never loads legacy admin_zhou/jun/xian rings or admin_hex.json.
 
 const COAST_BIN := "res://data/coast_mask.bin"
@@ -125,7 +125,7 @@ static func build_blank_grid(w: int, h: int) -> Array:
 	return out
 
 
-## Load CHGIS polygon hex-center fills (zhou_idx + jun_idx uint16 LE per cell).
+## Load sanguo-map polygon hex-center fills (zhou_idx + jun_idx uint16 LE per cell).
 static func apply_zhou_jun_fills(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.MAP_H) -> void:
 	## Ensure fields exist even if bake missing.
 	for h0 in hexes:

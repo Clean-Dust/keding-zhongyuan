@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless smoke: coast, CHGIS 州/郡 polygon fills, seats (no 县 faces), tick, save/load.
+## Headless smoke: coast, sanguo-map 州/郡 fills, CHGIS seats (no 县 faces), tick, save/load.
 
 
 func _init() -> void:
@@ -49,26 +49,26 @@ func _init() -> void:
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## 县: no faces. 州: Sinica ad0262 digitize (十三州). 郡: not auto-traced (jun empty).
+	## 县: no faces. 州/郡: sanguo-map GeoJSON PIP. 县=CHGIS seats only.
 	if xian_n != 0:
-		push_error("expected no 县 fills (no CHGIS county faces), got %d" % xian_n)
+		push_error("expected no 县 fills (no county faces), got %d" % xian_n)
 		failed += 1
 	if zhou_n < 50000:
-		push_error("expected Sinica-traced 十三州 fills, zhou=%d" % zhou_n)
+		push_error("expected sanguo-map 州 fills, zhou=%d" % zhou_n)
 		failed += 1
-	if jun_n != 0:
-		push_error("expected no 郡 fills (dotted borders not auto-traced), got %d" % jun_n)
+	if jun_n < 50000:
+		push_error("expected sanguo-map 郡 fills, jun=%d" % jun_n)
 		failed += 1
 	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
 		push_error("missing zhou_jun_fills.json / zhou_jun_fills.bin")
 		failed += 1
-	## Sample: 会稽 seat land should be 扬州 (州 mode); jun stays empty.
+	## Sample: 会稽 seat land → 扬州 + 会稽郡.
 	var kuaiji := Hex.lonlat_to_offset(120.582, 30.002)
 	var kidx := kuaiji.y * Hex.MAP_W + kuaiji.x
 	if kidx >= 0 and kidx < ws.hexes.size():
 		var kh: Dictionary = ws.hexes[kidx]
-		if str(kh.get("jun_id", "")) != "":
-			push_error("会稽 seat hex jun_id=%s expected empty" % kh.get("jun_id", ""))
+		if str(kh.get("jun_id", "")) != "会稽郡":
+			push_error("会稽 seat hex jun_id=%s expected 会稽郡" % kh.get("jun_id", ""))
 			failed += 1
 		if str(kh.get("zhou_id", "")) != "扬州":
 			push_error("会稽 seat hex zhou_id=%s expected 扬州" % kh.get("zhou_id", ""))
@@ -272,7 +272,7 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast + Sinica 州 fills reapplied via build_blank_grid on load; jun stays empty.
+		## Coast + sanguo-map 州/郡 fills reapplied via build_blank_grid on load.
 		var w2 := 0
 		var z2 := 0
 		var j2 := 0
@@ -290,11 +290,8 @@ func _init() -> void:
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if z2 < 50000:
-			push_error("load lost Sinica 州 fills zhou=%d" % z2)
-			failed += 1
-		if j2 != 0:
-			push_error("load invented jun fills=%d" % j2)
+		if z2 < 50000 or j2 < 50000:
+			push_error("load lost sanguo-map 州/郡 fills zhou=%d jun=%d" % [z2, j2])
 			failed += 1
 		if x2 != 0:
 			push_error("load invented xian fills=%d" % x2)

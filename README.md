@@ -38,9 +38,9 @@ Optional: open `project.godot` in the Godot editor and press Play.
 
 ## Display modes
 
-**州 / 郡** paint from real CHGIS polygons (hex-center PIP on 500×500): 郡 = V6 `pref_pgn` @ **140** (sparse SE); 州 = V4 `prov_pgn` @ **262** (扬/荆/交 only). Outside polygons → empty. Unit borders where neighbor ids differ. **Not** vector-identical (~6.9 km).
+**州 / 郡** paint from [xusizhe01/sanguo-map](https://github.com/xusizhe01/sanguo-map) GeoJSON (hex-center PIP on 500×500): 12 州 + 95 郡 (`data/sanguo_map/`). Outside polygons → empty. Unit borders where neighbor ids differ. **底图** toggle shows Sinica CCTS `ad0262` raster for visual QA (not the fill source).
 
-**县**: CHGIS has no Han county faces — mode shows **治所 markers only** (CHGIS-only seats). Thiessen/`xian_fills` disabled. Mode **地形** is land/sea as usual.
+**县**: no county faces — mode shows **治所 markers only** (CHGIS-only seats). Mode **地形** is land/sea as usual.
 
 Retired stubs: `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json` (`unused_for_rendering`, empty — never loaded).
 

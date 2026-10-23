@@ -9,195 +9,149 @@
     "lat_max": 42.8
   },
   "zhou": {
-    "source": "Sinica CCTS WMTS ad0262 raster underlay (digitized)",
-    "method": "multi_source_BFS from 13 州 seeds; barriers≈thick brown 州 borders+sea; per-州 geodesic distance caps; 凉州/益州 west clips (羌胡/发羌 empty); hex_center sample",
-    "underlay_trace": "/tmp/sinica_ad0262_z8.jpg",
-    "underlay_display": "data/sinica_ad0262_underlay.jpg",
-    "zhou_count_expected": 13,
-    "citation": "Academia Sinica CCTS — 三國歷史地圖(Sanguo) ad0262 (raster)",
-    "confidence": "medium — all 十三州 seeded and filled; borders jagged vs ink; not cadastral; peripheral 羌胡/鲜卑 beyond caps/clip stay empty"
+    "source": "xusizhe01/sanguo-map states.geojson",
+    "method": "hex_center_point_in_polygon",
+    "feature_count": 12,
+    "note": "12 州: 冀兖青徐扬荆豫益交幽司隶雍 (雍≈凉/并合区; not classical 十三州)",
+    "url": "https://github.com/xusizhe01/sanguo-map"
   },
   "jun": {
-    "source": "none (auto)",
-    "note": "郡 dotted borders too dense/faint for reliable auto-extract on this raster; jun_id left empty. Prefer 州 mode + underlay for 郡 detail."
+    "source": "xusizhe01/sanguo-map commanderies.geojson",
+    "method": "hex_center_point_in_polygon",
+    "feature_count": 95,
+    "name_field": "properties.name (+ light suffix/alias normalize)",
+    "url": "https://github.com/xusizhe01/sanguo-map"
   },
   "xian": {
-    "note": "No Han county faces; seats remain CHGIS-only markers."
+    "note": "counties.geojson not used; 县 = CHGIS seat points only"
   },
-  "fidelity_note": "Hex-center sampling of flood regions on 500×500 (~6.9 km). Not vector-identical to the painted map. Not CHGIS cadastral polygons.",
+  "citation": "Admin faces from xusizhe01/sanguo-map (states + commanderies GeoJSON). See data/sanguo_map/ATTRIBUTION.md. Sinica CCTS ad0262 underlay is separate QA imagery.",
+  "fidelity_note": "Hex-center PIP on 500×500 (~6.9 km). Not identical to Sinica raster ink. Source CRS is WGS84 lon/lat overlapping our Sinica bbox.",
+  "supersedes": "Sinica raster-trace fills (caa7e43 and later attempts)",
   "bin": "zhou_jun_fills.bin",
   "layout": "per cell: uint16 zhou_idx, uint16 jun_idx (LE); 0 = empty",
   "zhou_table": [
     "",
-    "司隶",
-    "豫州",
+    "雍州",
+    "幽州",
     "冀州",
+    "青州",
+    "司隶",
     "兖州",
     "徐州",
-    "青州",
+    "豫州",
+    "益州",
     "荆州",
     "扬州",
-    "益州",
-    "凉州",
-    "并州",
-    "幽州",
     "交州"
   ],
   "jun_table": [
-    ""
+    "",
+    "张掖郡",
+    "敦煌郡",
+    "酒泉郡",
+    "玄菟郡",
+    "辽西郡",
+    "辽东郡",
+    "上谷郡",
+    "渔阳郡",
+    "代郡",
+    "右北平郡",
+    "广阳郡",
+    "乐浪郡",
+    "雁门郡",
+    "涿郡",
+    "河间国",
+    "中山国",
+    "武威郡",
+    "太原郡",
+    "勃海郡",
+    "常山国",
+    "安平国",
+    "平原郡",
+    "巨鹿郡",
+    "西河郡",
+    "东莱郡",
+    "清河郡",
+    "上党郡",
+    "乐安郡",
+    "金城郡",
+    "赵国",
+    "济南国",
+    "北海国",
+    "齐国",
+    "河东郡",
+    "魏郡",
+    "泰山郡",
+    "琅邪国",
+    "济北国",
+    "汉阳郡",
+    "河内郡",
+    "北地郡",
+    "陇西郡",
+    "东平国",
+    "左冯翊郡",
+    "鲁国",
+    "安定郡",
+    "东郡",
+    "山阳郡",
+    "济阴郡",
+    "任城国",
+    "陈留国",
+    "左扶风郡",
+    "京兆尹",
+    "河南尹",
+    "东海国",
+    "谯郡",
+    "弘农郡",
+    "梁国",
+    "彭城国",
+    "广汉郡",
+    "武都郡",
+    "广陵郡",
+    "下邳国",
+    "颍川郡",
+    "陈国",
+    "汉中郡",
+    "南阳郡",
+    "汝南郡",
+    "蜀郡",
+    "淮南郡",
+    "庐江郡",
+    "巴郡",
+    "江夏郡",
+    "南郡",
+    "丹阳郡",
+    "吴郡",
+    "蜀郡属国",
+    "犍为郡",
+    "豫章郡",
+    "会稽郡",
+    "武陵郡",
+    "长沙郡",
+    "越巂郡",
+    "永昌郡",
+    "零陵郡",
+    "益州郡",
+    "桂阳郡",
+    "郁林郡",
+    "苍梧郡",
+    "牂牁郡",
+    "南海郡",
+    "交趾郡",
+    "合浦郡",
+    "九真郡",
+    "日南郡"
   ],
   "stats": {
     "land": 170246,
     "water": 79754,
-    "zhou_filled": 111737,
-    "jun_filled": 0,
-    "zhou_fill_rate_land": 0.6563,
-    "zhou_units": 13,
-    "jun_units": 0
-  },
-  "seeds": [
-    {
-      "zhou": "司隶",
-      "ok": true,
-      "lon": 112.45,
-      "lat": 34.6,
-      "seed_xy": [
-        1546,
-        712
-      ],
-      "rdeg": 5.0
-    },
-    {
-      "zhou": "豫州",
-      "ok": true,
-      "lon": 115.5,
-      "lat": 33.5,
-      "seed_xy": [
-        1811,
-        808
-      ],
-      "rdeg": 4.5
-    },
-    {
-      "zhou": "冀州",
-      "ok": true,
-      "lon": 115.0,
-      "lat": 37.5,
-      "seed_xy": [
-        1768,
-        460
-      ],
-      "rdeg": 4.5
-    },
-    {
-      "zhou": "兖州",
-      "ok": true,
-      "lon": 116.5,
-      "lat": 35.4,
-      "seed_xy": [
-        1898,
-        643
-      ],
-      "rdeg": 4.0
-    },
-    {
-      "zhou": "徐州",
-      "ok": true,
-      "lon": 117.5,
-      "lat": 34.0,
-      "seed_xy": [
-        1985,
-        765
-      ],
-      "rdeg": 4.5
-    },
-    {
-      "zhou": "青州",
-      "ok": true,
-      "lon": 118.7,
-      "lat": 36.5,
-      "seed_xy": [
-        2089,
-        547
-      ],
-      "rdeg": 4.5
-    },
-    {
-      "zhou": "荆州",
-      "ok": true,
-      "lon": 112.0,
-      "lat": 30.0,
-      "seed_xy": [
-        1507,
-        1112
-      ],
-      "rdeg": 7.0
-    },
-    {
-      "zhou": "扬州",
-      "ok": true,
-      "lon": 119.0,
-      "lat": 30.2,
-      "seed_xy": [
-        2115,
-        1095
-      ],
-      "rdeg": 7.5
-    },
-    {
-      "zhou": "益州",
-      "ok": true,
-      "lon": 104.1,
-      "lat": 30.65,
-      "seed_xy": [
-        820,
-        1056
-      ],
-      "rdeg": 9.5
-    },
-    {
-      "zhou": "凉州",
-      "ok": true,
-      "lon": 103.5,
-      "lat": 37.5,
-      "seed_xy": [
-        768,
-        460
-      ],
-      "rdeg": 8.5
-    },
-    {
-      "zhou": "并州",
-      "ok": true,
-      "lon": 112.4,
-      "lat": 37.7,
-      "seed_xy": [
-        1541,
-        443
-      ],
-      "rdeg": 5.0
-    },
-    {
-      "zhou": "幽州",
-      "ok": true,
-      "lon": 116.8,
-      "lat": 40.0,
-      "seed_xy": [
-        1924,
-        243
-      ],
-      "rdeg": 6.5
-    },
-    {
-      "zhou": "交州",
-      "ok": true,
-      "lon": 106.0,
-      "lat": 21.1,
-      "seed_xy": [
-        985,
-        1886
-      ],
-      "rdeg": 8.0
-    }
-  ]
+    "zhou_filled": 94246,
+    "jun_filled": 94246,
+    "zhou_fill_rate_land": 0.5536,
+    "jun_fill_rate_land": 0.5536,
+    "zhou_units": 12,
+    "jun_units": 95,
+    "jun_backfill_zhou_cells": 0
+  }
 }

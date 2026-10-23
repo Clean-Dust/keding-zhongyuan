@@ -1,7 +1,7 @@
 extends Node2D
 ## Hex-based map draw. Display mode (州/郡/县/地形) is UI-driven — not zoom.
-## 州/郡: CHGIS polygon hex-center fills (zhou_id / jun_id); unit borders between ids.
-## 县: seats only — no Han county faces in CHGIS (xian_id stays empty).
+## 州/郡: sanguo-map GeoJSON hex-center fills (zhou_id / jun_id); unit borders between ids.
+## 县: seats only — no county faces (xian_id stays empty).
 
 const HEX_SIZE := 36.0
 const HEX_DRAW := HEX_SIZE * 0.96
@@ -15,7 +15,7 @@ const ADMIN_NAME := Color(0.10, 0.10, 0.08, 0.92)
 const HINT_COLOR := Color(0.12, 0.12, 0.10, 0.88)
 const SEAT_MARK := Color(0.15, 0.12, 0.08, 0.9)
 const DRAW_MAP_MARKERS := false
-const EMPTY_ADMIN_HINT := "州/郡范围未覆盖（CHGIS 面稀疏）；县界暂无"
+const EMPTY_ADMIN_HINT := "州/郡范围未覆盖（源外面）；县界暂无"
 
 ## Display modes (buttons): zhou | jun | xian | terrain
 const MODE_ZHOU := "zhou"
@@ -469,7 +469,7 @@ func _draw_empty_admin_hint(vis: Rect2) -> void:
 		return
 	var font_size := _world_font_px(22.0)
 	var center := vis.get_center()
-	var msg := "县治所标记；县界待 CHGIS 县域面" if display_mode == MODE_XIAN else EMPTY_ADMIN_HINT
+	var msg := "县治所标记；无县域面" if display_mode == MODE_XIAN else EMPTY_ADMIN_HINT
 	draw_string(
 		ThemeDB.fallback_font,
 		center + Vector2(-float(font_size) * 3.5, float(font_size) * 0.35),
