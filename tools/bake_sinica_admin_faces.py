@@ -50,12 +50,14 @@ CHECKS = [
     (102.63, 37.93, "凉州"),  # 武威
     (96.21, 40.23, "凉州"),  # 敦煌 — must fill (was clipped by old WEST_CLIP)
     (100.24, 39.22, "凉州"),  # 张掖
-    (111.31, 23.49, "交州"),  # 广信
+    (111.59, 23.10, "交州"),  # 苍梧郡治 / 广信 area
     (107.65, 21.84, "交州"),  # 郁林
+    (110.23, 28.62, "荆州"),  # 武陆(=武陵) 郡治 — plate 荆州, not 益州
     (118.37, 36.86, "青州"),  # 临淄
-    (115.97, 39.49, "幽州"),  # 涿
+    (115.97, 39.49, "幽州"),  # 涿 (范阳郡 → 幽州 on plate)
     (99.20, 37.20, ""),  # 羌胡 corridor — not 凉州 mega-rect
-    (99.50, 24.00, ""),  # empty SW — not 益州 swallow
+    (98.00, 23.00, ""),  # empty SW of 永昌 — not 益州 swallow
+    (95.80, 26.50, ""),  # far-west parchment — not 益州
 ]
 ZHOU_CHECK_ALIASES = {"司州": {"司州", "司隶"}, "司隶": {"司州", "司隶"}}
 
@@ -67,7 +69,38 @@ SINICA_JUN_PARENT = {
     "魏郡": "冀州",
     "南安郡": "雍州",
     "阴平郡": "益州",
+    # 范阳/涿 sit with 幽州 on the plate (north of 冀州 solid border at 常山)
+    "范阳郡": "幽州",
+    # 苍梧治广信 — 交州 on plate (nearest-州 OCR drifts to 荆州)
+    "苍梧郡": "交州",
+    # 武陆(=武陵) — plate 荆州 label at ~110.8°E/29.1°N; nearest-州 drifts to 益州
+    "武陆郡": "荆州",
 }
+# Max pixel distance from a 州/郡 seed when growing into parchment (stops SW mega-bleed)
+GROW_MAX_DIST = 110
+SEED_CLEAR_DIST = 200
+# Claim radius (px) around locked 郡治 + their own 县 (阳翟←颍川 vs 司州 finger).
+# Keep small so 颍川 cannot swallow 南阳/宛.
+LOCKED_CLAIM_DIST = 32
+# Only steal these soft-border 州 when claiming a locked 郡 parent.
+CLAIM_STEAL_FROM = {
+    "颍川郡": {"司州", "司隶"},
+    "江夏郡": {"豫州", "扬州"},
+    "范阳郡": {"冀州"},
+    "苍梧郡": {"荆州", "扬州"},
+    "南安郡": {"凉州", "益州"},
+    "阴平郡": {"凉州", "雍州"},
+    "金城郡": {"雍州"},
+    "魏郡": {"司州", "司隶", "豫州"},
+    "武陆郡": {"益州"},
+}
+# Empty SW parchment west of 永昌/发羌 — clear 益州 bleed unless near plate seats.
+SW_CLEAR_LON = 99.0
+SW_KEEP_DEG = 1.2
+SW_VORONOI_LONS = (98.5, 106.5)
+SW_VORONOI_LAT_MAX = 28.5
+SW_VORONOI_DEG = 1.6
+SW_JUN_NAMES = ("永昌郡", "云南郡", "兴古郡", "建宁郡")
 
 
 def lonlat_to_xy(lon: float, lat: float, w: int, h: int) -> tuple[int, int]:
@@ -177,8 +210,9 @@ def multi_source(
     land: np.ndarray,
     seeds: list[tuple[int, int, int]],
     allowed: np.ndarray | None = None,
+    max_dist: float | None = None,
 ) -> np.ndarray:
-    """Nearest-seed flood; barriers = ~land. No per-州 bbox clips."""
+    """Nearest-seed flood; barriers = ~land. Optional max_dist caps parchment bleed."""
     hh, ww = land.shape
     labels = np.zeros((hh, ww), dtype=np.int16)
     dist = np.full((hh, ww), np.float32(1e9))
@@ -198,6 +232,8 @@ def multi_source(
         x, y, lid, d = q.popleft()
         if d > dist[y, x] + 1e-3:
             continue
+        if max_dist is not None and d >= max_dist:
+            continue
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nx, ny = x + dx, y + dy
             if nx < 0 or ny < 0 or nx >= ww or ny >= hh:
@@ -207,6 +243,8 @@ def multi_source(
             if allowed is not None and not allowed[ny, nx]:
                 continue
             nd = d + 1.0
+            if max_dist is not None and nd > max_dist:
+                continue
             if labels[ny, nx] == 0:
                 labels[ny, nx] = lid
                 dist[ny, nx] = nd
@@ -469,24 +507,48 @@ def main() -> int:
             print(f"  郡无父 {jp['jun']} (no 州 pocket/seed)")
             continue
         zid = zhou_index[zname]
-        xy = lonlat_to_xy(jp["lon"], jp["lat"], w, h)
-        n = nudge(sealed_land, *xy, 100)
-        if n:
-            cs = int(comp_size[sealed_comp[n[1], n[0]]])
-            lon_here = xy_to_lon(n[0], w)
-            # Always seed from labeled 郡治 (incl. 河西). Only reject huge wilderness
-            # pockets with no nearby 州 OCR when east of Hexi corridor.
-            hexi = lon_here < 105.5 and zname == "凉州"
-            if cs <= MAX_SEALED_COMP or hexi or lon_here >= 102.5:
-                sealed_seeds.append((n[0], n[1], zid))
-                print(f"  郡→州种子 {jp['jun']}→{zname} @ {n} comp={cs}")
-            else:
-                print(f"  reject west mega {jp['jun']}→{zname} comp={cs}")
-        n2 = nudge(mod_land, *xy, 80)
-        if n2:
-            mod_seeds.append((n2[0], n2[1], zid))
+        seed_ll = [(jp["lon"], jp["lat"])]
+        for s in jp.get("seeds") or []:
+            seed_ll.append((float(s["lon"]), float(s["lat"])))
+        for slon, slat in seed_ll:
+            xy = lonlat_to_xy(slon, slat, w, h)
+            n = nudge(sealed_land, *xy, 100)
+            if n:
+                cs = int(comp_size[sealed_comp[n[1], n[0]]])
+                lon_here = xy_to_lon(n[0], w)
+                # Always seed from labeled 郡治 (incl. 河西). Only reject huge wilderness
+                # pockets with no nearby 州 OCR when east of Hexi corridor.
+                hexi = lon_here < 105.5 and zname == "凉州"
+                if cs <= MAX_SEALED_COMP or hexi or lon_here >= 102.5:
+                    sealed_seeds.append((n[0], n[1], zid))
+                    print(f"  郡→州种子 {jp['jun']}→{zname} @ {n} comp={cs}")
+                else:
+                    print(f"  reject west mega {jp['jun']}→{zname} comp={cs}")
+            n2 = nudge(mod_land, *xy, 80)
+            if n2:
+                mod_seeds.append((n2[0], n2[1], zid))
 
-    core = multi_source(sealed_land, sealed_seeds)
+    # Cap sealed flood in mega wilderness pockets so one 益州 seed cannot paint
+    # empty SW parchment out to lon~96°.
+    core_uncapped = multi_source(sealed_land, sealed_seeds)
+    core_capped = multi_source(sealed_land, sealed_seeds, max_dist=SEED_CLEAR_DIST)
+    core = core_uncapped.copy()
+    ys, xs = np.where(core_uncapped > 0)
+    for y, x in zip(ys[::5], xs[::5]):
+        cid = int(sealed_comp[y, x])
+        if cid > 0 and int(comp_size[cid]) > MAX_SEALED_COMP:
+            # keep only capped reach inside mega pockets
+            if core_capped[y, x] == 0:
+                core[y, x] = 0
+            else:
+                core[y, x] = core_capped[y, x]
+    # fill holes inside non-mega from uncapped
+    ys, xs = np.where((core_uncapped > 0) & (core == 0))
+    for y, x in zip(ys, xs):
+        cid = int(sealed_comp[y, x])
+        if cid > 0 and int(comp_size[cid]) <= MAX_SEALED_COMP:
+            core[y, x] = core_uncapped[y, x]
+
     admin_zone = ndimage.binary_dilation(core > 0, iterations=ADMIN_ZONE_DILATE)
     land2 = mod_land & admin_zone
     grow_seeds = list(mod_seeds)
@@ -494,9 +556,48 @@ def main() -> int:
     for y, x in zip(ys[::12], xs[::12]):
         if land2[y, x]:
             grow_seeds.append((int(x), int(y), int(core[y, x])))
-    grown = multi_source(land2, grow_seeds)
+    grown = multi_source(land2, grow_seeds, max_dist=GROW_MAX_DIST)
     zhou_labels = np.where(core > 0, core, grown)
     zhou_labels = fill_small_holes(zhou_labels, land2 | sealed_land, max_hole=800)
+
+    # Plate-lock claim: only from locked 郡治 + 县 already in that 郡; only steal
+    # listed soft-border 州 (颍川←司州 finger at 阳翟, not 南阳/荆州).
+    claim_land = (sealed_land | mod_land) & (~_sea)
+    jun_by_name = {jp["jun"]: jp for jp in jun_pts}
+    n_claim_total = 0
+    for jname, zname in SINICA_JUN_PARENT.items():
+        zid = zhou_index.get(zname)
+        jp = jun_by_name.get(jname)
+        if not zid or not jp:
+            continue
+        steal = CLAIM_STEAL_FROM.get(jname)
+        if not steal:
+            continue
+        steal_ids = {zhou_index[z] for z in steal if z in zhou_index}
+        if not steal_ids:
+            continue
+        seed_ll = [(float(jp["lon"]), float(jp["lat"]))]
+        for s in jp.get("seeds") or []:
+            seed_ll.append((float(s["lon"]), float(s["lat"])))
+        for xp in xian_pts:
+            if xp.get("jun") == jname:
+                seed_ll.append((float(xp["lon"]), float(xp["lat"])))
+        claim_seeds: list[tuple[int, int, int]] = []
+        for slon, slat in seed_ll:
+            xy = lonlat_to_xy(slon, slat, w, h)
+            n = nudge(claim_land, *xy, 40)
+            if n:
+                claim_seeds.append((n[0], n[1], zid))
+        if not claim_seeds:
+            continue
+        claimed = multi_source(claim_land, claim_seeds, max_dist=LOCKED_CLAIM_DIST)
+        mask = (claimed == zid) & np.isin(zhou_labels, list(steal_ids) + [0])
+        n_claim = int(mask.sum())
+        zhou_labels[mask] = zid
+        n_claim_total += n_claim
+        print(f"  plate-lock {jname}→{zname} seeds={len(claim_seeds)} px={n_claim}")
+    print(f"  plate-lock claim total_px={n_claim_total}")
+
     print(
         f"  州 core={(core > 0).mean():.3f} final={(zhou_labels > 0).mean():.3f} "
         f"units={len(zhou_table) - 1}"
@@ -539,14 +640,21 @@ def main() -> int:
                 jun_table.append(jname)
             jid = jun_index[jname]
             jun_to_zhou_idx[jid] = zid
-            xy = lonlat_to_xy(jp["lon"], jp["lat"], w, h)
+            seed_ll = [(jp["lon"], jp["lat"])]
+            for s in jp.get("seeds") or []:
+                seed_ll.append((float(s["lon"]), float(s["lat"])))
+            # Also seed from 县治 already tagged to this 郡 (阳翟→颍川, etc.)
+            for xp in xian_pts:
+                if xp.get("jun") == jname:
+                    seed_ll.append((float(xp["lon"]), float(xp["lat"])))
             grow_land = land_jun & mask if mask.any() else land_jun
-            n = nudge(grow_land, *xy, 60)
-            if not n:
-                n = nudge(land_jun, *xy, 80)
-            if not n:
-                continue
-            seeds.append((n[0], n[1], jid))
+            for slon, slat in seed_ll:
+                xy = lonlat_to_xy(slon, slat, w, h)
+                n = nudge(grow_land, *xy, 60)
+                if not n:
+                    n = nudge(land_jun, *xy, 80)
+                if n:
+                    seeds.append((n[0], n[1], jid))
         if not seeds:
             continue
         allowed = mask.copy()
@@ -571,6 +679,51 @@ def main() -> int:
         if zid:
             jun_labels_mask = jun_labels == jid
             zhou_labels[jun_labels_mask] = zid
+
+    # Clear empty SW parchment after jun→zhou sync (永昌 flood must not refill 发羌).
+    # Do NOT touch 凉州/河西 (敦煌 ~96°E) — only 益州 (and its SW 郡) west of the cut.
+    yizhou_id = zhou_index.get("益州", 0)
+    sw_seat_ll = [
+        (float(jp["lon"]), float(jp["lat"]))
+        for jp in jun_pts
+        if jp["jun"] in SW_JUN_NAMES
+    ]
+    sw_jun_ids = {jun_index[n] for n in SW_JUN_NAMES if n in jun_index}
+    if yizhou_id and sw_seat_ll:
+        ys, xs = np.where(zhou_labels == yizhou_id)
+        cleared_px = 0
+        for y, x in zip(ys, xs):
+            lon = xy_to_lon(int(x), w)
+            if lon >= SW_CLEAR_LON:
+                continue
+            # Hexi is north; SW empty/发羌 is south of ~32°N
+            lat = LAT_MAX - (y + 0.5) / h * (LAT_MAX - LAT_MIN)
+            if lat > 32.0:
+                continue
+            if any(
+                ((lon - slon) ** 2 + (lat - slat) ** 2) ** 0.5 < SW_KEEP_DEG
+                for slon, slat in sw_seat_ll
+            ):
+                continue
+            zhou_labels[y, x] = 0
+            if int(jun_labels[y, x]) in sw_jun_ids or jun_labels[y, x] > 0:
+                jun_labels[y, x] = 0
+            cleared_px += 1
+        print(f"  SW raster clear 益州 west<{SW_CLEAR_LON} lat<=32 px={cleared_px}")
+
+    # Re-run pixel self-check after SW clear (initial checks ran pre-jun).
+    fails = []
+    for lon, lat, expect in CHECKS:
+        lid = sample_label(zhou_labels, lon, lat, w, h)
+        got = zhou_table[lid] if lid and lid < len(zhou_table) else ""
+        if expect == "":
+            ok = got == ""
+        else:
+            ok = got == expect or got in ZHOU_CHECK_ALIASES.get(expect, {expect})
+        label = expect if expect else "EMPTY"
+        print(f"  re-check {label} @({lon},{lat}) → {got or 'EMPTY'} {'OK' if ok else 'FAIL'}")
+        if not ok:
+            fails.append((expect or "EMPTY", got or "EMPTY", lon, lat))
 
     # --- Hex assign 州/郡 ---
     coast = args.coast.read_bytes()
@@ -607,6 +760,67 @@ def main() -> int:
                 jun_filled += 1
                 jun_counts[jun_table[jid]] += 1
 
+    # SW 益州: nearest-seat voronoi in the plate band, then clear empty west of 永昌.
+    yizhou_id = zhou_index.get("益州", 0)
+    sw_seats = [
+        (float(jp["lon"]), float(jp["lat"]), jun_index[jp["jun"]])
+        for jp in jun_pts
+        if jp["jun"] in SW_JUN_NAMES and jp["jun"] in jun_index
+    ]
+    if yizhou_id and sw_seats:
+        painted = Counter()
+        cleared = 0
+        lon0, lon1 = SW_VORONOI_LONS
+        for row in range(MAP_H):
+            for col in range(MAP_W):
+                i = row * MAP_W + col
+                if coast[i] == 0:
+                    continue
+                lon, lat = offset_to_lonlat(col, row)
+                zid = zhou_cell[i]
+                jid = jun_cell[i]
+                if lon0 <= lon <= lon1 and lat <= SW_VORONOI_LAT_MAX:
+                    if zid == 0 or zid == yizhou_id:
+                        best_j, best_d = 0, SW_VORONOI_DEG**2
+                        for slon, slat, sjid in sw_seats:
+                            d = (lon - slon) ** 2 + (lat - slat) ** 2
+                            if d < best_d:
+                                best_d, best_j = d, sjid
+                        if best_j:
+                            zhou_cell[i] = yizhou_id
+                            jun_cell[i] = best_j
+                            hex_zhou[row, col] = yizhou_id
+                            hex_jun[row, col] = best_j
+                            painted[jun_table[best_j]] += 1
+                            zid, jid = yizhou_id, best_j
+                if zid == yizhou_id and lon < SW_CLEAR_LON:
+                    if any(
+                        ((lon - slon) ** 2 + (lat - slat) ** 2) ** 0.5 < SW_KEEP_DEG
+                        for slon, slat, _ in sw_seats
+                    ):
+                        continue
+                    zhou_cell[i] = 0
+                    jun_cell[i] = 0
+                    hex_zhou[row, col] = 0
+                    hex_jun[row, col] = 0
+                    cleared += 1
+        # recompute counts after SW edit
+        zhou_counts = Counter()
+        jun_counts = Counter()
+        zhou_filled = jun_filled = 0
+        for row in range(MAP_H):
+            for col in range(MAP_W):
+                i = row * MAP_W + col
+                if coast[i] == 0:
+                    continue
+                if zhou_cell[i]:
+                    zhou_filled += 1
+                    zhou_counts[zhou_table[zhou_cell[i]]] += 1
+                if jun_cell[i]:
+                    jun_filled += 1
+                    jun_counts[jun_table[jun_cell[i]]] += 1
+        print(f"  SW voronoi painted={dict(painted)} cleared_west={cleared}")
+
     # Hex-level self-check
     hex_fails = []
     for lon, lat, expect in CHECKS:
@@ -615,8 +829,12 @@ def main() -> int:
         i = row * MAP_W + col
         zid = zhou_cell[i]
         got = zhou_table[zid] if zid and zid < len(zhou_table) else ""
-        print(f"  hex-check {expect or 'EMPTY'} → {got or 'EMPTY'}")
-        if got != expect:
+        if expect == "":
+            ok = got == ""
+        else:
+            ok = got == expect or got in ZHOU_CHECK_ALIASES.get(expect, {expect})
+        print(f"  hex-check {expect or 'EMPTY'} → {got or 'EMPTY'} {'OK' if ok else 'FAIL'}")
+        if not ok:
             hex_fails.append((expect or "EMPTY", got or "EMPTY"))
 
     args.out_bin.write_bytes(

@@ -58,6 +58,9 @@ def main() -> int:
         "魏郡": "冀州",
         "南安郡": "雍州",
         "阴平郡": "益州",
+        "范阳郡": "幽州",
+        "苍梧郡": "交州",
+        "武陆郡": "荆州",
     }
     for j in pts["jun"]:
         zn, jn = face_at(j["lon"], j["lat"])
@@ -75,6 +78,7 @@ def main() -> int:
         if "ThreeKingdoms262" in note or "tk262" in note.lower():
             j["note"] = "Sinica 郡/国 label; parent 州 from Sinica face under seat"
 
+    jun_parent = {j["jun"]: j["zhou"] for j in pts["jun"]}
     xian_out = []
     dropped = []
     for s in pts["xian"]:
@@ -82,14 +86,15 @@ def main() -> int:
         s = dict(s)
         if jn:
             s["jun"] = jn
-        if zn:
+        parent_z = jun_parent.get(s.get("jun") or "")
+        locked_z = SINICA_JUN_PARENT.get(s.get("jun") or "")
+        # 州 follows locked/plate 郡 parent when face 州 conflicts (阳翟→颍川→豫州)
+        if locked_z:
+            s["zhou"] = locked_z
+        elif parent_z:
+            s["zhou"] = parent_z
+        elif zn:
             s["zhou"] = zn
-        elif jn:
-            # inherit from jun table
-            for j in pts["jun"]:
-                if j["jun"] == jn:
-                    s["zhou"] = j["zhou"]
-                    break
         s["xian_id"] = f"xian:{s['zhou']}/{s['jun']}/{s['name']}"
         s.pop("tk262_parent", None)
         xian_out.append(s)

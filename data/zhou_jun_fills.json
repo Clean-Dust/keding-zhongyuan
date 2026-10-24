@@ -11,7 +11,7 @@
   "zhou": {
     "source": "Sinica CCTS ad0262 digitize",
     "method": "sealed all-ink walls (no bbox); 州治+filtered 郡治 cores; grow near cores on thick-ink land",
-    "underlay": "/tmp/sinica_ad0262_z8_hi.jpg",
+    "underlay": "/tmp/sinica_ad0262_z8.jpg",
     "units": 14
   },
   "jun": {
@@ -22,9 +22,9 @@
   "xian": {
     "source": "nearest Sinica ad0262 县治 inside 郡",
     "bin": "xian_fills.bin",
-    "units": 893
+    "units": 909
   },
-  "citation": "Academia Sinica CCTS ad0262 OCR labels (州/郡/县); brown-ink borders. Sole authority — not ThreeKingdoms262 / CHGIS polygons.",
+  "citation": "Academia Sinica CCTS ad0262 OCR labels (州/郡/县); brown-ink borders. Sole authority for admin faces — not ThreeKingdoms262 / CHGIS polygons.",
   "fidelity_note": "Hex-center sample ~6.9km; raster ink digitize not cadastral",
   "supersedes": [
     "caa7e43 sinica-trace",
@@ -66,14 +66,20 @@
     "琅邪国",
     "卫国",
     "乐陵国",
+    "东莞郡",
+    "东莱郡",
+    "乐安郡",
+    "北海国",
+    "城阳郡",
+    "平原郡",
+    "济南国",
+    "齐国",
     "勃海郡",
-    "安国",
+    "右北平郡",
     "安平郡",
     "巨鹿郡",
     "广平郡",
-    "河间郡",
     "清河郡",
-    "范阳郡",
     "襄国",
     "辽西郡",
     "阳平郡",
@@ -100,10 +106,12 @@
     "雁门郡",
     "上谷郡",
     "代郡",
-    "右北平郡",
+    "安国",
     "带方郡",
+    "河间郡",
     "渔阳郡",
     "燕国",
+    "范阳郡",
     "辽东郡",
     "下邳郡",
     "广陵郡",
@@ -130,7 +138,6 @@
     "建宁郡",
     "梓潼郡",
     "武都郡",
-    "武陆郡",
     "永昌郡",
     "汉中郡",
     "汉嘉郡",
@@ -142,6 +149,7 @@
     "蜀郡",
     "西充国",
     "阴平郡",
+    "武陆郡",
     "临贺郡",
     "南乡郡",
     "南郡",
@@ -174,64 +182,22 @@
     "扶风郡",
     "郿国",
     "陇西郡",
-    "魏兴郡",
-    "东莞郡",
-    "东莱郡",
-    "乐安郡",
-    "北海国",
-    "城阳郡",
-    "平原郡",
-    "济南国",
-    "齐国"
+    "魏兴郡"
   ],
   "bin": "zhou_jun_fills.bin",
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 170246,
-    "zhou_filled": 93670,
-    "jun_filled": 82870,
-    "xian_filled": 82610,
-    "zhou_fill_rate_land": 0.5502,
-    "jun_fill_rate_land": 0.4868,
+    "zhou_filled": 89556,
+    "jun_filled": 84471,
+    "xian_filled": 84369,
+    "zhou_fill_rate_land": 0.526,
+    "jun_fill_rate_land": 0.4962,
     "zhou_units": 14,
     "jun_units": 134
   },
   "self_check": {
-    "pixel_fails": [
-      {
-        "expect": "荆州",
-        "got": "扬州"
-      },
-      {
-        "expect": "豫州",
-        "got": "司州"
-      },
-      {
-        "expect": "幽州",
-        "got": "冀州"
-      },
-      {
-        "expect": "EMPTY",
-        "got": "益州"
-      }
-    ],
-    "hex_fails": [
-      {
-        "expect": "荆州",
-        "got": "扬州"
-      },
-      {
-        "expect": "豫州",
-        "got": "司州"
-      },
-      {
-        "expect": "幽州",
-        "got": "冀州"
-      },
-      {
-        "expect": "EMPTY",
-        "got": "益州"
-      }
-    ]
+    "pixel_fails": [],
+    "hex_fails": []
   }
 }
