@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """Render overnight-qa/zhou-vs-sinica.png: left underlay, right SOLID 州 colors.
 
-Right panel is flat filled colors from hex ids — never sheet JPEG textures.
+Right panel paints only hexes with a 州 id (no sea, no 羌胡/empty west).
+No debug captions.
 """
 from __future__ import annotations
 
 import argparse
-import json
+import colorsys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-LON_MIN, LON_MAX = 94.662, 130.0
-LAT_MIN, LAT_MAX = 15.55, 42.8
 MAP = 500
 
 
@@ -36,16 +35,16 @@ def main() -> int:
     )
     args = ap.parse_args()
 
+    import json
+
     meta = json.loads(args.fills.read_text())
     zt = meta["zhou_table"]
-    raw = args.bin.read_bytes()
-    zhou = np.frombuffer(raw, dtype="<u2").reshape(MAP, MAP, 2)[:, :, 0]
+    zhou = np.frombuffer(args.bin.read_bytes(), dtype="<u2").reshape(MAP, MAP, 2)[:, :, 0]
 
     src = args.underlay if args.underlay.is_file() else args.fallback_underlay
     base = np.array(Image.open(src).convert("RGB"))
     bh, bw = base.shape[:2]
 
-    # upsample hex ids to underlay size (nearest)
     ys = (np.arange(bh) + 0.5) / bh * MAP
     xs = (np.arange(bw) + 0.5) / bw * MAP
     zhou_u = zhou[
@@ -53,40 +52,33 @@ def main() -> int:
         np.clip(xs.astype(int), 0, MAP - 1)[None, :],
     ]
 
-    # Stable distinct solid palette (not pastel scan-like)
     rng = np.random.default_rng(7)
     pal = np.zeros((max(len(zt), 2), 3), dtype=np.uint8)
-    pal[0] = (245, 245, 240)  # empty = light paper, not white holes in ocean
     for i in range(1, len(zt)):
-        # saturated mid-tones
         h = rng.random()
         s = 0.55 + 0.25 * rng.random()
         v = 0.70 + 0.15 * rng.random()
-        # HSV → RGB
-        import colorsys
-
         r, g, b = colorsys.hsv_to_rgb(h, s, v)
         pal[i] = (int(r * 255), int(g * 255), int(b * 255))
 
-    # RIGHT: solid color plane only — no sheet JPEG, no border etch (avoids fake seams)
-    lum = base.mean(axis=2)
-    sea = lum < 90
-    solid = pal[np.clip(zhou_u, 0, len(pal) - 1)].copy()
-    solid[sea & (zhou_u == 0)] = (40, 70, 110)  # sea blue
-    # empty land (unlabeled) → same sea/land treatment, never bright white
-    empty_land = (~sea) & (zhou_u == 0)
-    solid[empty_land] = (210, 205, 195)
+    # RIGHT starts as the underlay; paint solid colors ONLY on beige land with a 州 id.
+    # Sea / 羌胡 / empty west keep the underlay (not painted).
+    solid = base.copy()
+    r = base[:, :, 0].astype(np.float32)
+    g = base[:, :, 1].astype(np.float32)
+    b = base[:, :, 2].astype(np.float32)
+    lum = (r + g + b) / 3.0
+    beige = (lum > 125) & (lum < 235) & (r > 145) & (g > 135) & (r + g > b * 1.55)
+    painted = (zhou_u > 0) & beige
+    solid[painted] = pal[zhou_u[painted]]
 
-    # LEFT: Sinica underlay unchanged
     side = np.concatenate([base, solid], axis=1)
     im = Image.fromarray(side)
     dr = ImageDraw.Draw(im)
     try:
         font = ImageFont.truetype("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 26)
-        font_sm = ImageFont.truetype("/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", 18)
     except Exception:
         font = ImageFont.load_default()
-        font_sm = font
 
     for zi, name in enumerate(zt):
         if zi == 0:
@@ -95,25 +87,13 @@ def main() -> int:
         if len(ys_) < 80:
             continue
         cy, cx = int(np.median(ys_)), int(np.median(xs_))
-        dr.text((cx + bw + 3, cy + 3), name, fill=(0, 0, 0), font=font)
+        dr.text((cx + bw + 2, cy + 2), name, fill=(0, 0, 0), font=font)
         dr.text((cx + bw, cy), name, fill=(220, 30, 30), font=font)
 
-    dr.text(
-        (16, 12),
-        "LEFT: Sinica ad0262 underlay",
-        fill=(15, 15, 15),
-        font=font_sm,
-    )
-    dr.text(
-        (bw + 16, 12),
-        "RIGHT: Tan-262 solid 州 hex (purple-boundary flood) — no sheet texture",
-        fill=(15, 15, 15),
-        font=font_sm,
-    )
-
+    # No debug captions.
     args.out.parent.mkdir(parents=True, exist_ok=True)
     im.save(args.out, optimize=True)
-    print(f"wrote {args.out} shape={side.shape}")
+    print(f"wrote {args.out} shape={side.shape} painted_frac={painted.mean():.3f}")
     return 0
 
 

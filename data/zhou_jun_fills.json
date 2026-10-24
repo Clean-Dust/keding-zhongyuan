@@ -9,8 +9,8 @@
     "lat_max": 42.8
   },
   "zhou": {
-    "source": "Tan-262 purple 州 boundaries",
-    "method": "georef purple→hex barriers; seat flood; barrier absorb; solid continuous",
+    "source": "Tan-262 purple 州 boundaries (distance-limited; no all-coast fill)",
+    "method": "purple-ink seal + nearest 州 seed; hex splat",
     "units": 14
   },
   "jun": {
@@ -182,16 +182,15 @@
   "bin": "zhou_jun_fills.bin",
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
-    "land": 170246,
-    "zhou_filled": 170246,
-    "jun_filled": 170246,
-    "xian_filled": 168113,
+    "land": 143831,
+    "zhou_filled": 60829,
+    "jun_filled": 60829,
+    "xian_filled": 60017,
     "zhou_units": 14,
     "jun_units": 134
   },
   "self_check": {
     "pixel_fails": [],
     "hex_fails": []
-  },
-  "authority": "Tan Qixiang 中国历史地图集 三国 分幅 (tan-262)"
+  }
 }
