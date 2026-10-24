@@ -30,29 +30,44 @@ from scipy import ndimage
 LON_MIN, LON_MAX = 94.662, 130.0
 LAT_MIN, LAT_MAX = 15.55, 42.8
 MAP_W, MAP_H = 500, 500
-WEST_CLIP = 97.8
+# Include 河西 (敦煌 ~96.2°E). Empty 羌胡/发羌 stays empty via ink walls, not lon clip.
+WEST_CLIP = LON_MIN - 0.05
 # Reject 郡治 sealed seeds that land in wilderness mega-pockets (empty west, etc.)
 MAX_SEALED_COMP = 55000
 MAX_JUN_SEED_DEG = 6.0
 ADMIN_ZONE_DILATE = 12
 
 # Self-check samples: (lon, lat, expected_zhou) — expected "" means must be unlabeled
-# Self-check anchors (TK262 parents for 颍川/江夏; 司隶 per TK262 legend).
+# Anchors follow Sinica plate; 司州/司隶 both acceptable at 雒阳 (OCR varies).
 CHECKS = [
-    (114.71, 31.02, "荆州"),  # 江夏
+    (114.17, 30.22, "荆州"),  # 江夏郡治 label
     (112.54, 33.00, "荆州"),  # 南阳
     (115.90, 28.67, "扬州"),  # 豫章
     (116.78, 32.58, "扬州"),  # 寿春
     (113.47, 34.16, "豫州"),  # 颍川
-    (112.60, 34.73, "司隶"),  # 雒阳 (TK262: Sili; Sinica OCR often 司州)
+    (112.60, 34.73, "司州"),  # 雒阳 (Sinica label; accept 司隶 alias below)
     (104.08, 30.65, "益州"),  # 成都
     (102.63, 37.93, "凉州"),  # 武威
+    (96.21, 40.23, "凉州"),  # 敦煌 — must fill (was clipped by old WEST_CLIP)
+    (100.24, 39.22, "凉州"),  # 张掖
     (111.31, 23.49, "交州"),  # 广信
+    (107.65, 21.84, "交州"),  # 郁林
     (118.37, 36.86, "青州"),  # 临淄
     (115.97, 39.49, "幽州"),  # 涿
-    (100.00, 38.00, ""),  # empty west — not 凉州 rect
+    (99.20, 37.20, ""),  # 羌胡 corridor — not 凉州 mega-rect
     (99.50, 24.00, ""),  # empty SW — not 益州 swallow
 ]
+ZHOU_CHECK_ALIASES = {"司州": {"司州", "司隶"}, "司隶": {"司州", "司隶"}}
+
+# Sinica plate parents where nearest-州 OCR / pocket votes mis-assign.
+SINICA_JUN_PARENT = {
+    "江夏郡": "荆州",
+    "颍川郡": "豫州",
+    "金城郡": "凉州",
+    "魏郡": "冀州",
+    "南安郡": "雍州",
+    "阴平郡": "益州",
+}
 
 
 def lonlat_to_xy(lon: float, lat: float, w: int, h: int) -> tuple[int, int]:
@@ -390,22 +405,40 @@ def main() -> int:
 
     # Assign 郡→州 from ink topology; majority-vote within each sealed component
     # so contested pockets (江夏 vs 豫州 seed bleed) follow the dominant 州.
-    # Honor explicit TK262 / locked parents (do not overwrite).
-    def parent_locked(jp: dict) -> bool:
-        if jp.get("tk262_parent"):
-            return True
-        note = str(jp.get("note") or "")
-        src = str(jp.get("source") or "")
-        return "ThreeKingdoms262" in note or "tk262" in src
-
+    # Prefer prior Sinica parent from points when topology agrees or is empty;
+    # never invent from non-Sinica atlases. Plate-locked parents always win.
     jun_comp: dict[str, int] = {}
     for jp in jun_pts:
-        if parent_locked(jp) and jp.get("zhou"):
-            zname = jp["zhou"]
-            print(f"  郡父锁定 {jp['jun']}→{zname} (TK262/ref)")
+        locked = SINICA_JUN_PARENT.get(jp["jun"])
+        prior = (jp.get("zhou") or "").strip()
+        if prior == "司隶":
+            prior = "司州" if "司州" in zhou_index else prior
+        if locked and locked in zhou_index:
+            zname = locked
+            print(f"  郡父锁定 {jp['jun']}→{zname} (Sinica plate)")
         else:
             zname = parent_zhou_for_jun(jp)
-            jp["zhou"] = zname
+            if prior and prior in zhou_index:
+                if not zname or zname == prior:
+                    zname = prior
+                else:
+                    d_prior = 1e9
+                    d_topo = 1e9
+                    for zp in zhou_pts:
+                        for s in zp.get("seeds") or [{"lon": zp["lon"], "lat": zp["lat"]}]:
+                            d = ((jp["lon"] - float(s["lon"])) ** 2 + (jp["lat"] - float(s["lat"])) ** 2) ** 0.5
+                            if zp["zhou"] == prior:
+                                d_prior = min(d_prior, d)
+                            if zp["zhou"] == zname:
+                                d_topo = min(d_topo, d)
+                    if d_prior <= d_topo + 0.35:
+                        zname = prior
+        jp["zhou"] = zname
+        # normalize 司州/司隶 to whichever is in the table
+        if jp["zhou"] == "司州" and "司州" not in zhou_index and "司隶" in zhou_index:
+            jp["zhou"] = "司隶"
+        if jp["zhou"] == "司隶" and "司隶" not in zhou_index and "司州" in zhou_index:
+            jp["zhou"] = "司州"
         xy = lonlat_to_xy(jp["lon"], jp["lat"], w, h)
         n = nudge(sealed_land, *xy, 120)
         jun_comp[jp["jun"]] = int(sealed_comp[n[1], n[0]]) if n else 0
@@ -416,7 +449,7 @@ def main() -> int:
         if cid and jp.get("zhou"):
             votes[cid][jp["zhou"]] += 1
     for jp in jun_pts:
-        if parent_locked(jp):
+        if jp["jun"] in SINICA_JUN_PARENT:
             continue
         cid = jun_comp.get(jp["jun"], 0)
         if not cid or cid not in votes:
@@ -441,7 +474,10 @@ def main() -> int:
         if n:
             cs = int(comp_size[sealed_comp[n[1], n[0]]])
             lon_here = xy_to_lon(n[0], w)
-            if cs <= MAX_SEALED_COMP or lon_here >= 102.5:
+            # Always seed from labeled 郡治 (incl. 河西). Only reject huge wilderness
+            # pockets with no nearby 州 OCR when east of Hexi corridor.
+            hexi = lon_here < 105.5 and zname == "凉州"
+            if cs <= MAX_SEALED_COMP or hexi or lon_here >= 102.5:
                 sealed_seeds.append((n[0], n[1], zid))
                 print(f"  郡→州种子 {jp['jun']}→{zname} @ {n} comp={cs}")
             else:
@@ -470,7 +506,10 @@ def main() -> int:
     for lon, lat, expect in CHECKS:
         lid = sample_label(zhou_labels, lon, lat, w, h)
         got = zhou_table[lid] if lid and lid < len(zhou_table) else ""
-        ok = got == expect
+        if expect == "":
+            ok = got == ""
+        else:
+            ok = got == expect or got in ZHOU_CHECK_ALIASES.get(expect, {expect})
         label = expect if expect else "EMPTY"
         print(f"  check {label} @({lon},{lat}) → {got or 'EMPTY'} {'OK' if ok else 'FAIL'}")
         if not ok:
@@ -680,7 +719,10 @@ def main() -> int:
             "bin": args.out_xian_bin.name,
             "units": len(xian_table) - 1,
         },
-        "citation": "Academia Sinica CCTS ad0262 OCR labels (州/郡/县); brown-ink borders",
+        "citation": (
+            "Academia Sinica CCTS ad0262 OCR labels (州/郡/县); brown-ink borders. "
+            "Sole authority for admin faces — not ThreeKingdoms262 / CHGIS polygons."
+        ),
         "fidelity_note": "Hex-center sample ~6.9km; raster ink digitize not cadastral",
         "supersedes": ["caa7e43 sinica-trace", "30edcd4 sanguo-map"],
         "zhou_table": zhou_table,

@@ -11,20 +11,20 @@
   "zhou": {
     "source": "Sinica CCTS ad0262 digitize",
     "method": "sealed all-ink walls (no bbox); 州治+filtered 郡治 cores; grow near cores on thick-ink land",
-    "underlay": "/tmp/sinica_ad0262_z8.jpg",
+    "underlay": "/tmp/sinica_ad0262_z8_hi.jpg",
     "units": 14
   },
   "jun": {
     "source": "Sinica CCTS ad0262 digitize",
     "method": "multi_source_BFS from 郡治 constrained to parent 州 mask",
-    "units": 133
+    "units": 134
   },
   "xian": {
     "source": "nearest Sinica ad0262 县治 inside 郡",
     "bin": "xian_fills.bin",
-    "units": 879
+    "units": 893
   },
-  "citation": "Academia Sinica CCTS ad0262 OCR labels (seats); ThreeKingdoms262 by Zhoudadudu (CC BY-SA 4.0) for 州↔郡 parents; based on 中国历史地图集",
+  "citation": "Academia Sinica CCTS ad0262 OCR labels (州/郡/县); brown-ink borders. Sole authority — not ThreeKingdoms262 / CHGIS polygons.",
   "fidelity_note": "Hex-center sample ~6.9km; raster ink digitize not cadastral",
   "supersedes": [
     "caa7e43 sinica-trace",
@@ -36,7 +36,7 @@
     "兖州",
     "冀州",
     "凉州",
-    "司隶",
+    "司州",
     "并州",
     "幽州",
     "徐州",
@@ -53,25 +53,18 @@
     "交趾郡",
     "南海郡",
     "合浦郡",
-    "建宁郡",
     "日南郡",
     "朱崖郡",
     "苍梧郡",
     "郁林郡",
     "高凉郡",
     "东平国",
-    "东莞郡",
+    "东海国",
     "东郡",
-    "任城郡",
-    "卫国",
-    "山阳郡",
     "泰山郡",
-    "济北国",
     "济阴郡",
     "琅邪国",
-    "阳平郡",
-    "陈留国",
-    "鲁郡",
+    "卫国",
     "乐陵国",
     "勃海郡",
     "安国",
@@ -80,10 +73,10 @@
     "广平郡",
     "河间郡",
     "清河郡",
-    "潮平郡",
     "范阳郡",
     "襄国",
     "辽西郡",
+    "阳平郡",
     "魏郡",
     "张掖郡",
     "敦煌郡",
@@ -92,12 +85,12 @@
     "西海郡",
     "酒泉郡",
     "金城郡",
-    "冯翊郡",
     "平阳郡",
     "弘农郡",
     "河东郡",
     "河内郡",
     "河南尹",
+    "冯翊郡",
     "上党郡",
     "乐平郡",
     "太原郡",
@@ -113,12 +106,11 @@
     "燕国",
     "辽东郡",
     "下邳郡",
-    "东海国",
     "广陵郡",
     "彭城国",
+    "丹阳郡",
     "临川郡",
     "临海郡",
-    "丹阳郡",
     "会稽郡",
     "吴郡",
     "宁国",
@@ -133,9 +125,12 @@
     "兴古郡",
     "南充国",
     "巴西郡",
+    "巴郡",
     "广汉郡",
+    "建宁郡",
     "梓潼郡",
     "武都郡",
+    "武陆郡",
     "永昌郡",
     "汉中郡",
     "汉嘉郡",
@@ -146,6 +141,7 @@
     "犍为郡",
     "蜀郡",
     "西充国",
+    "阴平郡",
     "临贺郡",
     "南乡郡",
     "南郡",
@@ -153,21 +149,25 @@
     "宜都郡",
     "新城郡",
     "桂阳郡",
-    "武陆郡",
     "江夏郡",
     "湘东郡",
     "衡阳郡",
     "襄阳郡",
     "长沙郡",
     "零陵郡",
+    "任城郡",
     "安丰郡",
+    "山阳郡",
     "弋阳郡",
     "梁国",
     "谯郡",
+    "陈留国",
     "陈郡",
     "颍川郡",
+    "鲁郡",
     "京兆郡",
     "北地郡",
+    "南安郡",
     "天水郡",
     "安定郡",
     "广魏郡",
@@ -175,6 +175,7 @@
     "郿国",
     "陇西郡",
     "魏兴郡",
+    "东莞郡",
     "东莱郡",
     "乐安郡",
     "北海国",
@@ -187,19 +188,23 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 170246,
-    "zhou_filled": 85085,
-    "jun_filled": 72011,
-    "xian_filled": 70610,
-    "zhou_fill_rate_land": 0.4998,
-    "jun_fill_rate_land": 0.423,
+    "zhou_filled": 93670,
+    "jun_filled": 82870,
+    "xian_filled": 82610,
+    "zhou_fill_rate_land": 0.5502,
+    "jun_fill_rate_land": 0.4868,
     "zhou_units": 14,
-    "jun_units": 133
+    "jun_units": 134
   },
   "self_check": {
     "pixel_fails": [
       {
+        "expect": "荆州",
+        "got": "扬州"
+      },
+      {
         "expect": "豫州",
-        "got": "司隶"
+        "got": "司州"
       },
       {
         "expect": "幽州",
@@ -212,8 +217,12 @@
     ],
     "hex_fails": [
       {
+        "expect": "荆州",
+        "got": "扬州"
+      },
+      {
         "expect": "豫州",
-        "got": "司隶"
+        "got": "司州"
       },
       {
         "expect": "幽州",
@@ -224,11 +233,5 @@
         "got": "益州"
       }
     ]
-  },
-  "tk262_reference": {
-    "commons": "https://commons.wikimedia.org/wiki/File:ThreeKingdoms262.png",
-    "author": "Zhoudadudu",
-    "license": "CC BY-SA 4.0",
-    "year": 262
   }
 }

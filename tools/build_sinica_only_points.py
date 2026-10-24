@@ -48,12 +48,34 @@ ZHOU_REJECT = {
     "越州",
 }
 
-# Non-county ink
+# OCR junk / non-admin fragments that look like 郡/国
+JUN_DENY = {
+    "郡",
+    "国",
+    "國",
+    "尹",
+    "古郡",
+    "昌郡",
+    "海郡",
+    "木郡",
+    "湘秉郡",
+    "黄平郡",
+    "未提郡",
+    "柯郡",  # OCR fragment of 牂柯郡
+    "南国",
+    "每国",
+    "兴国",
+    "郧国",
+    "潮平郡",
+}
+
+# Non-county ink / ethnolabels / hydro fragments
 XIAN_DENY = {
     "鲜卑",
     "羌胡",
     "发羌",
     "葱茈羌",
+    "河西鲜卑",
     "沃沮",
     "县",
     "郡",
@@ -63,6 +85,21 @@ XIAN_DENY = {
     "城",
     "胡",
     "羌",
+    "交州",
+    "益州",
+    "凉州",
+    "雍州",
+    "冀州",
+    "兖州",
+    "青州",
+    "徐州",
+    "扬州",
+    "荆州",
+    "豫州",
+    "并州",
+    "幽州",
+    "司州",
+    "司隶",
 }
 
 
@@ -94,6 +131,11 @@ def split_compound(text: str) -> list[str]:
         p = p.strip()
         if not p:
             continue
+        # 郁林郡交州 / 济南国青州
+        m = re.match(r"^(.+?[郡尹國国])([\u3400-\u9fff]{2,3}州)$", p)
+        if m:
+            out.extend([m.group(1), m.group(2)])
+            continue
         m = re.match(r"^(.+?[郡尹國国])([\u3400-\u9fff]{2,4})$", p)
         if m and clean_text(m.group(1)).endswith(("郡", "尹", "国", "國")):
             out.extend([m.group(1), m.group(2)])
@@ -102,10 +144,19 @@ def split_compound(text: str) -> list[str]:
     return out or [text]
 
 
+# 县 names that end with hydro glyphs on this plate
+XIAN_HYDRO_OK = {
+    "会水",
+    "白水",  # 阴平/武都 area 县
+}
+
+
 def classify(text: str) -> str:
     t = clean_text(text)
     if not t:
         return "junk"
+    if t in XIAN_HYDRO_OK:
+        return "xian"
     if t.endswith(("水", "河", "江", "海", "湖", "泽", "澤", "渠", "溪")):
         return "hydro"
     if t.endswith(("关", "關", "塞", "戍")):
@@ -143,6 +194,18 @@ def normalize_zhou(name: str) -> str:
     if n in ("司隶", "司隸"):
         return "司州"  # Sinica map authority
     return n
+
+
+# Nearest-州 OCR fails for some 郡 whose labels sit near another 州's toponyms.
+# These follow the Sinica plate's 州 assignment (ink / legend), not CHGIS/TK262.
+SINICA_JUN_PARENT = {
+    "江夏郡": "荆州",
+    "颍川郡": "豫州",
+    "金城郡": "凉州",
+    "魏郡": "冀州",
+    "南安郡": "雍州",
+    "阴平郡": "益州",
+}
 
 
 def dedupe(items: list[dict], radius_deg: float) -> list[dict]:
@@ -268,7 +331,10 @@ def main() -> int:
                 kind = "junk"
         if kind == "jun":
             norm = clean_text(L["text"])
-            if norm in ("古郡", "郡", "国", "國", "尹"):
+            if norm in JUN_DENY or "□" in norm or "？" in norm or "?" in norm:
+                kind = "junk"
+            # drop glued 州 suffix leftovers (郁林郡交州 → handled by split; leftover junk)
+            if norm.endswith("州") and ("郡" in norm or "国" in norm):
                 kind = "junk"
         classified[kind].append({**L, "kind": kind, "norm": norm, "conf": float(L["conf"])})
 
@@ -277,7 +343,11 @@ def main() -> int:
         for x in classified["zhou"]
         if x["conf"] >= args.min_conf_zhou and x["norm"] not in ZHOU_REJECT and len(x["norm"]) >= 2
     ]
-    jun_cands = [x for x in classified["jun"] if x["conf"] >= args.min_conf_jun]
+    jun_cands = [
+        x
+        for x in classified["jun"]
+        if x["conf"] >= args.min_conf_jun and x["norm"] not in JUN_DENY
+    ]
     zhou_seeds = dedupe(zhou_cands, args.dedupe_deg)
     jun_seeds = dedupe(jun_cands, args.dedupe_deg)
 
@@ -347,16 +417,34 @@ def main() -> int:
                 best = zn
         return best, best_d
 
-    # 郡: one seat per name (best conf); parent = nearest 州 seed
-    jun_by_name: dict[str, dict] = {}
-    for j in sorted(jun_seeds, key=lambda x: -x["conf"]):
-        jun_by_name.setdefault(j["norm"], j)
+    # 郡: one seat per name = OCR label nearest geometric median of all seeds
+    # (avoids a single north-margin legend hit stealing 酒泉/郁林)
+    jun_groups: dict[str, list[dict]] = defaultdict(list)
+    for j in jun_seeds:
+        jun_groups[j["norm"]].append(j)
 
     jun_out = []
-    for name, j in sorted(jun_by_name.items()):
+    for name, seeds in sorted(jun_groups.items()):
+        if name in JUN_DENY:
+            continue
+        # map OCR fragment □柯郡 already denied; also skip if 牂柯郡 exists and name is 柯郡
+        pts_ll = [(s["lon"], s["lat"]) for s in seeds]
+        mlon, mlat = geometric_median(pts_ll)
+        j = min(seeds, key=lambda s: math.hypot(s["lon"] - mlon, s["lat"] - mlat))
+        # Prefer higher-zoom / higher-conf when nearly tied
+        near = [
+            s
+            for s in seeds
+            if math.hypot(s["lon"] - j["lon"], s["lat"] - j["lat"]) < 0.35
+        ]
+        if near:
+            j = max(near, key=lambda s: (float(s.get("zoom") or 0), s["conf"]))
         zhou, d = nearest_zhou(j["lon"], j["lat"])
         if not zhou or d > args.max_zhou_deg:
             zhou = ""
+        if name in SINICA_JUN_PARENT:
+            zhou = SINICA_JUN_PARENT[name]
+            d = 0.0
         col, row = lonlat_to_col_row(j["lon"], j["lat"])
         jun_out.append(
             {
@@ -373,7 +461,17 @@ def main() -> int:
                 "sinica_ocr_conf": j["conf"],
                 "sinica_zoom": j.get("zoom"),
                 "deg_to_zhou_label": round(d, 3) if zhou else None,
-                "note": "Sinica 郡/国 label (=郡治); parent 州=nearest Sinica 州 label",
+                "seeds": [
+                    {
+                        "lon": s["lon"],
+                        "lat": s["lat"],
+                        "label": s["text"],
+                        "conf": s["conf"],
+                        "zoom": s.get("zoom"),
+                    }
+                    for s in seeds
+                ],
+                "note": "Sinica 郡/国 label (=郡治); parent 州=plate/nearest Sinica 州 label",
             }
         )
 
@@ -391,6 +489,9 @@ def main() -> int:
             if not x["norm"] or x["norm"] in XIAN_DENY:
                 continue
             raw_t = clean_text(x["text"])
+            # ridges / mouths / non-seat fragments
+            if raw_t.endswith(("岭", "嶺", "口", "戍", "塞", "陂", "渚")):
+                continue
             has_suf = raw_t.endswith(("县", "縣", "邑", "道")) or raw_t in ("江州", "泉州")
             if len(x["norm"]) == 1 and not has_suf:
                 continue

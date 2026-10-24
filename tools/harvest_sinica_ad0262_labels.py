@@ -105,8 +105,14 @@ def main() -> int:
         default=None,
         help="optional [[tx,ty],…] list; default = full bbox range",
     )
+    ap.add_argument(
+        "--big-only",
+        action="store_true",
+        help="only OCR tiles already cached with size >= min-bytes (skip fetch/tiny)",
+    )
+    ap.add_argument("--progress-every", type=int, default=25)
     args = ap.parse_args()
-    fetch = args.fetch_missing and not args.no_fetch
+    fetch = args.fetch_missing and not args.no_fetch and not args.big_only
 
     if args.tiles_json and args.tiles_json.is_file():
         tile_list = [tuple(xy) for xy in json.loads(args.tiles_json.read_text())]
@@ -133,29 +139,40 @@ def main() -> int:
     n_skip = 0
     t0 = time.time()
 
+    scanned = 0
     for tx, ty in tile_list:
         key = f"{tx}_{ty}"
         if key in done_keys:
             continue
         path = args.cache / f"ad0262_{args.zoom}_{tx}_{ty}.png"
         if not path.is_file() or path.stat().st_size < 40:
-            if not fetch:
+            if args.big_only or not fetch:
                 n_skip += 1
+                scanned += 1
                 continue
             path2 = fetch_tile(args.zoom, tx, ty, args.cache, args.sleep)
             if path2 is None:
                 empty_tiles.append({"tx": tx, "ty": ty, "reason": "fetch_fail"})
                 done_keys.add(key)
+                scanned += 1
                 continue
             path = path2
         if path.stat().st_size < args.min_bytes:
             empty_tiles.append({"tx": tx, "ty": ty, "reason": "tiny", "bytes": path.stat().st_size})
             done_keys.add(key)
             n_skip += 1
+            scanned += 1
+            if scanned % 500 == 0:
+                print(
+                    f"  scan={scanned} ocr={n_ocr} labels={len(labels)} skip={n_skip} "
+                    f"elapsed={time.time()-t0:.0f}s",
+                    flush=True,
+                )
             continue
 
         hits = ocr_tile(engine, path)
         n_ocr += 1
+        scanned += 1
         if not hits:
             empty_tiles.append({"tx": tx, "ty": ty, "reason": "no_text"})
             done_keys.add(key)
@@ -182,7 +199,7 @@ def main() -> int:
                 }
             )
         done_keys.add(key)
-        if n_ocr % 25 == 0:
+        if n_ocr % args.progress_every == 0 or scanned % 200 == 0:
             print(
                 f"  ocr={n_ocr} labels={len(labels)} skip={n_skip} "
                 f"at {tx},{ty} elapsed={time.time()-t0:.0f}s",
