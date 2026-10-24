@@ -188,11 +188,11 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 170246,
-    "zhou_filled": 89556,
-    "jun_filled": 84471,
-    "xian_filled": 84369,
-    "zhou_fill_rate_land": 0.526,
-    "jun_fill_rate_land": 0.4962,
+    "zhou_filled": 101874,
+    "jun_filled": 97170,
+    "xian_filled": 96946,
+    "zhou_fill_rate_land": 0.5984,
+    "jun_fill_rate_land": 0.5708,
     "zhou_units": 14,
     "jun_units": 134
   },
