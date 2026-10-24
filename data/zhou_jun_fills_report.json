@@ -1,15 +1,15 @@
 {
   "stats": {
     "land": 143831,
-    "zhou_filled": 81851,
-    "jun_filled": 81851,
-    "xian_filled": 80336,
+    "zhou_filled": 82941,
+    "jun_filled": 82941,
+    "xian_filled": 81426,
     "zhou_units": 14,
     "jun_units": 134
   },
   "zhou_hex_counts": {
     "凉州": 9345,
-    "幽州": 6456,
+    "幽州": 6856,
     "冀州": 2644,
     "并州": 1874,
     "兖州": 8729,
@@ -21,13 +21,9 @@
     "益州": 14363,
     "荆州": 12409,
     "扬州": 6702,
-    "交州": 8462
+    "交州": 9152
   },
-  "coast_clip_removed": {
-    "交州": 658,
-    "幽州": 396
-  },
-  "note": "交州/幽州 from 1a01029 solid fill; sea-center clip only; one land CC; other 州=1a01029; 916 县",
+  "note": "交州/幽州 = solid 1a01029 land fills (9152/6856, 1 CC). QA render: land-only + 1px ocean collar + one CC. 916 县.",
   "zhou_table": [
     "",
     "交州",

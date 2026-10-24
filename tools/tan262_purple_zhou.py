@@ -146,57 +146,50 @@ def clip_zhou_to_sheet_coast(
     scale: float = 0.5,
     underlay: Path | None = None,
 ) -> dict[str, int]:
-    """Clip 交州/幽州 to coastline: drop hexes whose *center* is sea.
+    """Clip 交州/幽州 using *dark underlay sea at hex center* only.
 
-    Keeps one connected land CC per 州 (drops offshore specks) and re-fills
-    true interior holes so the solid outline is not Swiss-cheesed. Other 州
-    are never modified.
+    Sheet-blue tests false-positive on coastal land and shatter the fill.
+    Aggressive dilate/neighbor rules are forbidden here. After removal, refill
+    every morphological hole and keep one CC. Other 州 are never modified.
+
+    Visual sea overhang from hex upsampling is handled in render_zhou_qa_png
+    (paint solid, then restore dark-water pixels).
     """
-    del scale  # center test uses full-res sheet; scale unused
+    del scale, sheets, georef  # dark-underlay center test only
     removed: dict[str, int] = {}
-    under_sea = None
-    if underlay is not None and Path(underlay).is_file():
-        under_sea = underlay_sea_hex(Path(underlay))
-    for zname, sheet_name in COAST_CLIP_ZHOU.items():
+    if underlay is None or not Path(underlay).is_file():
+        print("coast-clip: no underlay — skip (keep solid fills)", flush=True)
+        return removed
+    under_sea = underlay_sea_hex(Path(underlay))
+    for zname in COAST_CLIP_ZHOU:
         zid = zhou_index.get(zname)
         if not zid:
-            continue
-        g = georef.get(sheet_name)
-        path = sheets / sheet_name
-        if not g or not g.get("ok") or not path.is_file():
-            print(f"coast-clip skip {zname}: missing sheet/georef", flush=True)
             continue
         before = hex_zhou == zid
         if not before.any():
             removed[zname] = 0
             continue
-        # Sea test once on the solid outline — do not re-scan after hole fill
-        # (re-testing punches Swiss cheese back into the land mass).
-        sea_hex = hex_centers_on_sheet_sea(before.astype(np.uint8), path, g)
-        if under_sea is not None:
-            sea_hex = ((sea_hex > 0) | ((before) & (under_sea > 0))).astype(np.uint8)
-        sel = before & (sea_hex > 0)
+        sel = before & (under_sea > 0)
         n = int(sel.sum())
         hex_zhou[sel] = 0
         m = (hex_zhou == zid).astype(np.uint8)
         if m.any():
-            # One connected land region — drops offshore specks only
             core = largest_connected(m).astype(np.uint8)
             hex_zhou[(hex_zhou == zid) & (core == 0)] = 0
-            # Refill morphological interior holes (land voids), never the sea set we removed
+            # Always refill land holes — never leave Swiss cheese
             filled = _fill_holes_binary(core)
-            hole = (filled > 0) & (core == 0) & (sea_hex == 0)
+            hole = (filled > 0) & (core == 0) & (under_sea == 0)
             hex_zhou[hole] = zid
             core2 = largest_connected((hex_zhou == zid).astype(np.uint8)).astype(np.uint8)
             hex_zhou[(hex_zhou == zid) & (core2 == 0)] = 0
         removed[zname] = n
         ncc = cv2.connectedComponentsWithStats((hex_zhou == zid).astype(np.uint8), 4)[0] - 1
         holes_left = int(
-            ((_fill_holes_binary((hex_zhou == zid).astype(np.uint8)) > 0) & (hex_zhou != zid)).sum()
+            ((_fill_holes_binary((hex_zhou == zid).astype(np.uint8)) > 0) & (hex_zhou == 0)).sum()
         )
         print(
-            f"coast-clip {zname}: removed {n} sea-center hexes → {int((hex_zhou == zid).sum())} "
-            f"(CC={ncc}, holes={holes_left})",
+            f"coast-clip {zname}: removed {n} dark-sea-center hexes → {int((hex_zhou == zid).sum())} "
+            f"(CC={ncc}, land_holes={holes_left})",
             flush=True,
         )
     return removed

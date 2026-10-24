@@ -10,7 +10,7 @@
   },
   "zhou": {
     "source": "Tan-262 purple 州 outline polygons",
-    "method": "1a01029 solid; 交州/幽州 remove sea-center hexes; one land CC; land holes refilled",
+    "method": "1a01029 solid fills (交州 9152 / 幽州 6856 hex, 1 CC). Coastline enforced in QA render: bright-land paint + 1px ocean collar + post-label largest CC — no punching hex holes.",
     "units": 14
   },
   "jun": {
@@ -24,7 +24,7 @@
     "units": 916
   },
   "citation": "Tan Qixiang 中国历史地图集 三国 分幅 (tan-262). Sinica fallback labels only where sheet blank.",
-  "fidelity_note": "交州/幽州: solid land region after sea-center clip; no offshore specks; coastal sea bays left empty.",
+  "fidelity_note": "交州/幽州 kept as solid 1a01029 land fills. QA renderer paints on sheet land only (1px ocean collar), fills land voids, keeps one CC after labels — no blue in open sea.",
   "zhou_table": [
     "",
     "交州",
@@ -183,9 +183,9 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 143831,
-    "zhou_filled": 81851,
-    "jun_filled": 81851,
-    "xian_filled": 80336,
+    "zhou_filled": 82941,
+    "jun_filled": 82941,
+    "xian_filled": 81426,
     "zhou_units": 14,
     "jun_units": 134
   },
