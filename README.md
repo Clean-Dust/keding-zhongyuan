@@ -38,9 +38,9 @@ Optional: open `project.godot` in the Godot editor and press Play.
 
 ## Display modes
 
-**州 / 郡 shapes are only unions of hexes whose `xian_id` belongs to that 州/郡** (parents from `data/counties_roster.*`). There is no separate 州/郡 geometry and no Voronoi/PIP fill.
+**州 / 郡 / 县** faces digitized from Sinica CCTS `ad0262` (seeded from CHGIS 治所 points in `admin_points.json`). Unit borders where neighbor ids differ. **底图** toggle shows the same Sinica raster for QA. 县 faces = nearest 县治 inside each 郡 (not whole-map Thiessen).
 
-Until counties are hand-placed, every land hex has empty `xian_id`. Modes **州 / 郡 / 县** then show unpainted gray land (not green 地形, not Voronoi blobs) plus HUD/on-map「县范围尚未铺设」(roster count shown). Mode **地形** is land/sea green/blue as usual. Optional seat marks only if a future `data/county_seats.json` exists.
+**Points**: 州治 / 郡治 / 县治 markers (distinct shapes). Mode **地形** is land/sea as usual.
 
 Retired stubs: `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin_hex.json` (`unused_for_rendering`, empty — never loaded).
 
@@ -56,7 +56,7 @@ Retired stubs: `admin_zhou.json` / `admin_jun.json` / `admin_xian.json` / `admin
 
 - Pause menu **保存** → `user://dual_scale_save.json`
 - **读取** loads that file (falls back to `res://data/debug_save.json` if missing)
-- Sparse hex save; coast reapplied on load; `xian_id` persisted when set (empty until hand-filled)
+- Sparse hex save; coast reapplied on load; `xian_id` persisted when set (from CHGIS fill bake)
 
 ## Settings (Esc → 设置…)
 
@@ -71,11 +71,14 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 
 ## Map / factions (MVP)
 
-- **160 × 160** hexes; pointy-top even-r (双数打横矮半格)
-- Geographic bbox: `lon 94.662…125.69`, `lat 15.55…41.272` (象林→襄平)
+- **500 × 500** hexes; pointy-top even-r (双数打横矮半格); ≈6.9 km flat-to-flat
+- Geographic bbox (Sinica CCTS `ad0262` screenshot): `lon 94.662…130.0`, `lat 15.55…42.8` (敦煌→朝鲜海缘；象林→高句丽北缘). Peripheral labels (羌胡/发羌/高句丽/夷洲) stay **empty** of 州/郡/县.
 - **Coast**: `data/coast_mask.*` — water impassable
-- **Admin names** (source of truth): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县. Paint uses per-hex `xian_id` + roster parents; **no** Voronoi / CHGIS auto-bake.
+- **Admin names** (source of truth): `data/counties_roster.md` + `data/counties_roster.json` — 续汉书·郡国志 baseline for **184–280**, 东汉十三州 → 郡/国 → 县. Paint uses per-hex `xian_id` + roster parents.
+- **县 fills**: `data/xian_fills.json` + `data/xian_fills.bin` — bake via `tools/bake_xian_fills.py` (CHGIS@140 hex-center PIP). Coverage stats in `xian_fills_report.json`.
+- **治所**: `data/county_seats.json` — **CHGIS V6 only** (no Kongming); bake via `tools/match_county_seats.py`. Unmatched listed in `county_seats_report.json`.
 - **Retired stubs** (never loaded): `admin_*.json` — empty, `unused_for_rendering`. See `data/README.txt`.
+- **Sinica underlay**: `data/sinica_ad0262_underlay.jpg` — offline bake of CCTS WMTS `ad0262` (三國歷史地圖 **raster**, not vector). Toggle **底图** + opacity in the top bar. Bake: `python3 tools/bake_sinica_underlay.py`. Attribution: Academia Sinica CCTS.
 - Edge anchors: 敦煌 / 永昌 / 交趾 / 日南 / 象林 / 东冶 / 襄平 / 乐浪 (+ 金城 / 蓟 / 番禺 / 会稽)
 - Owned helpers: **会稽** 曹操, **蓟** 袁绍, **金城** 董卓残部
 
@@ -83,14 +86,22 @@ Sensitivity tiers **1–10** (live apply, saved to `user://dual_scale_input.json
 
 `lod_scale ≤ 0.85` (`CameraLod.Z_HEX`) enters hex micro and pauses strategic time. Admin paint stays on the selected button.
 
-### Re-bake coast (admin borders: manual pipeline only)
+### Re-bake coast / 县 fills
 
 ```bash
-# Coast only. Do NOT regenerate admin_* Voronoi or admin_hex from PIP.
+# Coast only (no admin_* rings).
 python3 tools/bake_coast_admin.py --ne /path/to/ne_50m_land.shp --out data
+
+# CHGIS-only 治所, then hex fills (year 140 county points → Thiessen → hex-center PIP).
+python3 tools/match_county_seats.py \
+  --cnty /tmp/chgis/v6_time_cnty_pts_utf_wgs84.shp \
+  --pref /tmp/chgis/v6_time_pref_pts_utf_wgs84.shp
+python3 tools/bake_xian_fills.py \
+  --cnty /tmp/chgis/v6_time_cnty_pts_utf_wgs84.shp \
+  --ne /tmp/ne/ne_50m_land.shp
 ```
 
-Admin names: edit `data/counties_roster.*`. Geometry TBD by hand (seats → hex ranges).
+Admin names: edit `data/counties_roster.*`. 郡/州 = unions of filled 县; do not invent separate 州/郡 boundaries.
 
 ## Windows export
 

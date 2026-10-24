@@ -1,14 +1,17 @@
 extends SceneTree
-## Headless smoke: coast, empty xian_id (no Voronoi fill), roster, tick, save/load.
+## Headless smoke: coast, admin_points, optional faces, CHGIS seats, tick, save/load.
 
 
 func _init() -> void:
 	var failed := 0
-	if Hex.MAP_W != 160 or Hex.MAP_H != 160 or Hex.MAP_H != Hex.compute_map_h():
-		push_error("MAP=%dx%d expected 160x160 compute=%d" % [Hex.MAP_W, Hex.MAP_H, Hex.compute_map_h()])
+	if Hex.MAP_W != 500 or Hex.MAP_H != 500 or Hex.MAP_H != Hex.compute_map_h():
+		push_error("MAP=%dx%d expected 500x500 compute=%d" % [Hex.MAP_W, Hex.MAP_H, Hex.compute_map_h()])
 		failed += 1
 	if not is_equal_approx(Hex.LAT_MIN, 15.55):
 		push_error("LAT_MIN=%s expected 15.55 (象林)" % Hex.LAT_MIN)
+		failed += 1
+	if not is_equal_approx(Hex.LON_MAX, 130.0) or not is_equal_approx(Hex.LAT_MAX, 42.8):
+		push_error("bbox LON_MAX=%s LAT_MAX=%s expected 130.0 / 42.8 (Sinica crop)" % [Hex.LON_MAX, Hex.LAT_MAX])
 		failed += 1
 	CountiesRoster.ensure_loaded()
 	if CountiesRoster.county_count() < 1000:
@@ -26,41 +29,142 @@ func _init() -> void:
 	var land_n := 0
 	var water_n := 0
 	var xian_n := 0
+	var zhou_n := 0
+	var jun_n := 0
 	for h in ws.hexes:
 		if str(h.get("terrain", "")) == "water":
 			water_n += 1
-			if str(h.get("xian_id", "")) != "":
-				push_error("water hex has xian_id")
+			if str(h.get("xian_id", "")) != "" or str(h.get("zhou_id", "")) != "" or str(h.get("jun_id", "")) != "":
+				push_error("water hex has admin id")
 				failed += 1
 				break
 		else:
 			land_n += 1
 			if str(h.get("xian_id", "")) != "":
 				xian_n += 1
+			if str(h.get("zhou_id", "")) != "":
+				zhou_n += 1
+			if str(h.get("jun_id", "")) != "":
+				jun_n += 1
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## Until hand-filled: almost all land hexes have empty xian_id (no Voronoi/PIP paint).
-	if xian_n > 0:
-		push_error("expected no xian fills yet, got %d" % xian_n)
+	## Sinica-traced faces + admin points. 江夏 must be 荆州.
+	## Thresholds reflect ink-sealed fills (empty western parchment stays unlabeled).
+	if zhou_n < 40000:
+		push_error("expected Sinica 州 fills, zhou=%d" % zhou_n)
 		failed += 1
-	## Extreme anchors on nearest hex (row 0 = north); 160×160 south to 象林.
-	var extremes := {
-		"敦煌": Vector2i(0, 7),
-		"乐浪": Vector2i(159, 14),
-		"襄平": Vector2i(147, 0),
-		"交趾": Vector2i(58, 125),
-		"日南": Vector2i(61, 153),
-		"象林": Vector2i(69, 159),
-	}
+	if jun_n < 40000:
+		push_error("expected Sinica 郡 fills, jun=%d" % jun_n)
+		failed += 1
+	if xian_n < 40000:
+		push_error("expected 县 fills inside 郡, xian=%d" % xian_n)
+		failed += 1
+	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
+		push_error("missing zhou_jun_fills.json / zhou_jun_fills.bin")
+		failed += 1
+	if not FileAccess.file_exists("res://data/xian_fills.json") or not FileAccess.file_exists("res://data/xian_fills.bin"):
+		push_error("missing xian_fills.json / xian_fills.bin")
+		failed += 1
+	if not FileAccess.file_exists("res://data/admin_points.json"):
+		push_error("missing admin_points.json")
+		failed += 1
+	else:
+		var ap_txt := FileAccess.get_file_as_string("res://data/admin_points.json")
+		var ap_any: Variant = JSON.parse_string(ap_txt)
+		if typeof(ap_any) != TYPE_DICTIONARY:
+			push_error("admin_points.json unreadable")
+			failed += 1
+		else:
+			var ap: Dictionary = ap_any
+			var zhou_pts: Array = ap.get("zhou", [])
+			var jun_pts: Array = ap.get("jun", [])
+			var xian_pts: Array = ap.get("xian", [])
+			if zhou_pts.size() < 13:
+				push_error("admin_points 州治=%d expected 13" % zhou_pts.size())
+				failed += 1
+			if jun_pts.size() < 80:
+				push_error("admin_points 郡治=%d expected ≥80" % jun_pts.size())
+				failed += 1
+			if xian_pts.size() < 500:
+				push_error("admin_points 县治=%d expected ≥500" % xian_pts.size())
+				failed += 1
+			## 江夏郡 → 荆州
+			var jx_ok := false
+			for j_any in jun_pts:
+				if typeof(j_any) != TYPE_DICTIONARY:
+					continue
+				var j: Dictionary = j_any
+				if str(j.get("jun", "")).begins_with("江夏"):
+					jx_ok = true
+					if str(j.get("zhou", "")) != "荆州":
+						push_error("江夏郡 zhou=%s expected 荆州" % j.get("zhou", ""))
+						failed += 1
+			if not jx_ok:
+				push_error("江夏郡 missing from admin_points")
+				failed += 1
+	## 会稽 → 扬州; 江夏 seat area → 荆州 (not 扬州).
+	var kuaiji := Hex.lonlat_to_offset(120.582, 30.002)
+	var kidx := kuaiji.y * Hex.MAP_W + kuaiji.x
+	if kidx >= 0 and kidx < ws.hexes.size():
+		var kh: Dictionary = ws.hexes[kidx]
+		if str(kh.get("zhou_id", "")) != "扬州":
+			push_error("会稽 hex zhou_id=%s expected 扬州" % kh.get("zhou_id", ""))
+			failed += 1
+	var jx := Hex.lonlat_to_offset(114.71, 31.02)
+	var jxi := jx.y * Hex.MAP_W + jx.x
+	if jxi >= 0 and jxi < ws.hexes.size():
+		var jh: Dictionary = ws.hexes[jxi]
+		if str(jh.get("zhou_id", "")) != "荆州":
+			push_error("江夏 hex zhou_id=%s expected 荆州" % jh.get("zhou_id", ""))
+			failed += 1
+	var seats_n := CountiesRoster.seat_count()
+	if seats_n < 500:
+		push_error("county_seats too few: %d" % seats_n)
+		failed += 1
+	## Sample seat: 雒阳 projects; no xian fill (north of CHGIS poly coverage).
+	var luoyang_ok := false
+	var luoyang_id := "xian:司隶/河南尹/雒阳"
+	for s_any in CountiesRoster.load_seats():
+		if typeof(s_any) != TYPE_DICTIONARY:
+			continue
+		var s: Dictionary = s_any
+		if str(s.get("name", "")) != "雒阳":
+			continue
+		luoyang_ok = true
+		var col := int(s.get("col", -1))
+		var row := int(s.get("row", -1))
+		if col < 200 or col > 360 or row < 80 or row > 220:
+			push_error("雒阳 seat hex unexpected (%d,%d)" % [col, row])
+			failed += 1
+		var seat_idx := row * Hex.MAP_W + col
+		if seat_idx >= 0 and seat_idx < ws.hexes.size():
+			var seat_hex: Dictionary = ws.hexes[seat_idx]
+			if str(seat_hex.get("zhou_id", "")) != "司隶":
+				push_error("雒阳 hex zhou_id=%s expected 司隶" % seat_hex.get("zhou_id", ""))
+				failed += 1
+			if str(seat_hex.get("xian_id", "")) != luoyang_id:
+				push_error("雒阳 hex xian_id=%s expected %s" % [seat_hex.get("xian_id", ""), luoyang_id])
+				failed += 1
+		break
+	if not luoyang_ok:
+		push_error("雒阳 seat missing from county_seats.json")
+		failed += 1
+	if CountiesRoster.zhou_of(luoyang_id) != "司隶" or CountiesRoster.jun_of(luoyang_id) != "河南尹":
+		push_error("雒阳 roster parents broken")
+		failed += 1
+	## Extreme anchors: expect Hex.lonlat_to_offset of their declared lon/lat.
 	for a in MapFactory.resolved_anchors():
 		var name := str(a.name)
-		if not extremes.has(name):
-			continue
-		var want: Vector2i = extremes[name]
+		var want := Hex.lonlat_to_offset(float(a.lon), float(a.lat))
 		if int(a.col) != want.x or int(a.row) != want.y:
 			push_error("anchor %s at (%d,%d) expected (%d,%d)" % [name, a.col, a.row, want.x, want.y])
 			failed += 1
+	## 乐浪 must no longer sit on the east rim (bbox opens to Korea).
+	var lelang := Hex.lonlat_to_offset(125.69, 38.96)
+	if lelang.x >= Hex.MAP_W - 5:
+		push_error("乐浪 still near east rim col=%d (bbox not widened)" % lelang.x)
+		failed += 1
 	var p0 := Hex.to_pixel(Hex.offset_to_axial(0, 0), 10.0)
 	var p1 := Hex.to_pixel(Hex.offset_to_axial(0, 1), 10.0)
 	var p2 := Hex.to_pixel(Hex.offset_to_axial(0, 2), 10.0)
@@ -70,10 +174,31 @@ func _init() -> void:
 	for path in [
 		"res://data/counties_roster.json",
 		"res://data/coast_mask.bin",
+		"res://data/sinica_ad0262_underlay.jpg",
+		"res://data/sinica_ad0262_underlay.json",
 	]:
 		if not FileAccess.file_exists(path):
 			push_error("missing %s" % path)
 			failed += 1
+	## Sinica underlay is raster only — must load; never invent hex fills from it.
+	var abs_u := ProjectSettings.globalize_path("res://data/sinica_ad0262_underlay.jpg")
+	var uimg := Image.load_from_file(abs_u)
+	if uimg == null or uimg.get_width() < 100:
+		push_error("sinica underlay image bad")
+		failed += 1
+	var umeta: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/sinica_ad0262_underlay.json"))
+	if typeof(umeta) != TYPE_DICTIONARY:
+		push_error("sinica underlay meta not object")
+		failed += 1
+	else:
+		var um: Dictionary = umeta
+		if str(um.get("layer", "")) != "ad0262" or str(um.get("kind", "")) != "raster_wmts_tiles":
+			push_error("sinica meta must declare ad0262 raster_wmts_tiles")
+			failed += 1
+		if str(um.get("not_vector", "")).find("NOT") < 0:
+			push_error("sinica meta missing not_vector warning")
+			failed += 1
+
 	## Legacy admin files may exist but must not drive paint — stubs only, no rings/PIP.
 	for path2 in [
 		"res://data/admin_zhou.json",
@@ -195,24 +320,31 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast reapplied on load; admin stays empty until hand-filled.
+		## Coast + admin fills reapplied on load.
 		var w2 := 0
+		var z2 := 0
 		var x2 := 0
 		for h2 in ws2.hexes:
 			if str(h2.get("terrain", "")) == "water":
 				w2 += 1
-			elif str(h2.get("xian_id", "")) != "":
-				x2 += 1
+			else:
+				if str(h2.get("zhou_id", "")) != "":
+					z2 += 1
+				if str(h2.get("xian_id", "")) != "":
+					x2 += 1
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if x2 > 0:
-			push_error("load invented xian fills=%d" % x2)
+		if z2 < 40000:
+			push_error("load lost 州 fills zhou=%d" % z2)
+			failed += 1
+		if x2 < 40000:
+			push_error("load lost 县 fills xian=%d" % x2)
 			failed += 1
 	print(
-		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d xian_fills=%d roster=%d z_hex=%.2f" % [
+		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d zhou_fills=%d jun_fills=%d xian_fills=%d roster=%d seats=%d z_hex=%.2f" % [
 			1 if failed == 0 else 0, failed, ws.hexes.size(), ws.map_w, ws.map_h,
-			land_n, water_n, xian_n, CountiesRoster.county_count(), CameraLod.Z_HEX,
+			land_n, water_n, zhou_n, jun_n, xian_n, CountiesRoster.county_count(), seats_n, CameraLod.Z_HEX,
 		]
 	)
 	call_deferred("quit", 1 if failed else 0)

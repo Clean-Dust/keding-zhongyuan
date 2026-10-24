@@ -9,15 +9,19 @@ const NEIGHBORS: Array[Vector2i] = [
 	Vector2i(-1, 0), Vector2i(-1, 1), Vector2i(0, 1),
 ]
 
-## Bounding box from extreme Three Kingdoms edge cities (WGS84 °).
-const LON_MIN := 94.662 ## 敦煌
-const LON_MAX := 125.69 ## 乐浪
-const LAT_MIN := 15.55 ## 象林 (汉南缘; 含九真/日南)
-const LAT_MAX := 41.272 ## 襄平
+## Bounding box fitted to Sinica CCTS 三国 overlay view (ad0262 screenshot).
+## West keeps 敦煌; east opens to full Korean peninsula; north covers 高句丽 margin;
+## south keeps 象林/朱崖洲. Peripheral labels (羌胡/发羌/高句丽/夷洲) are view-only —
+## land outside matched CHGIS@140 county cells stays empty of 州/郡/县 (never forced).
+const LON_MIN := 94.662 ## 敦煌 (凉州西缘)
+const LON_MAX := 130.0 ## east of 朝鲜半岛 / Busan sea margin
+const LAT_MIN := 15.55 ## 象林 / 朱崖洲南缘
+const LAT_MAX := 42.8 ## north of 高句丽 margin on Sinica crop
 
-const MAP_W := 160
-## Fixed square grid (design freeze); lon/lat linear onto WIDTH×HEIGHT.
-const MAP_H := 160
+## 500×500 over Sinica ad0262 extent ≈6.9 km flat-to-flat (was 240≈14.3 km; 160≈19 km).
+const MAP_W := 500
+## Fixed square grid; lon/lat linear onto WIDTH×HEIGHT.
+const MAP_H := 500
 
 
 static func mid_lat() -> float:

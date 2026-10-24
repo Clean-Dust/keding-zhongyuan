@@ -1,0 +1,2680 @@
+{
+  "meta": {
+    "tier": "xian_seats",
+    "era": "184-280",
+    "baseline_year": 140,
+    "system": "东汉十三州",
+    "roster_count": 1181,
+    "matched_count": 901,
+    "unmatched_count": 280,
+    "match_rate": 0.7629,
+    "confidence_counts": {
+      "high": 838,
+      "unmatched": 280,
+      "medium": 31,
+      "low": 32
+    },
+    "source_counts": {
+      "CHGIS_V6": 901
+    },
+    "bbox": {
+      "lon_min": 94.662,
+      "lon_max": 130.0,
+      "lat_min": 15.55,
+      "lat_max": 42.8,
+      "note": "Sinica CCTS ad0262 screenshot extent; 羌胡/发羌/高句丽/夷洲 land stays empty of admin"
+    },
+    "source": "CHGIS V6 county points ONLY matched to counties_roster by name (+郡 proximity)",
+    "citation": "CHGIS, Version 6 (c) Fairbank Center / Fudan CHGS, 2016. Sinica CCTS WMTS ad0262 for map extent only (raster, not seats).",
+    "method": "name_match_project_snap; no Voronoi; no hex xian_id fills; no peripheral 州 jam",
+    "projection": "Hex.lonlat_to_offset even-r 500x500; sea snap≤3",
+    "note": "Seats alone do not paint 县/郡/州 territory. Hand-fill hex ranges later."
+  },
+  "unmatched_by_zhou": {
+    "交州": [
+      "南海郡/増城 (no_chgis_name)",
+      "苍梧郡/端谿 (no_chgis_name)",
+      "苍梧郡/冯乗 (no_chgis_name)",
+      "苍梧郡/鄣平 (no_chgis_name)",
+      "郁林郡/桂林 (no_chgis_name)",
+      "郁林郡/増食 (no_chgis_name)",
+      "合浦郡/临元 (no_chgis_name)",
+      "交趾郡/龙编 (no_chgis_name)",
+      "交趾郡/羸𨻻 (no_chgis_name)",
+      "交趾郡/安定 (no_chgis_name)",
+      "交趾郡/苟漏 (no_chgis_name)",
+      "交趾郡/麊泠 (no_chgis_name)",
+      "交趾郡/北带 (no_chgis_name)",
+      "交趾郡/稽徐 (no_chgis_name)",
+      "交趾郡/西于 (no_chgis_name)",
+      "交趾郡/朱䳒 (no_chgis_name)",
+      "交趾郡/封谿 (no_chgis_name)",
+      "交趾郡/望海 (no_chgis_name)",
+      "九真郡/胥浦 (no_chgis_name)",
+      "九真郡/居风 (no_chgis_name)",
+      "九真郡/咸欢 (no_chgis_name)",
+      "九真郡/无功 (no_chgis_name)",
+      "九真郡/无编 (no_chgis_name)",
+      "日南郡/西卷 (no_chgis_name)",
+      "日南郡/朱吾 (no_chgis_name)",
+      "日南郡/卢容 (no_chgis_name)",
+      "日南郡/象林 (no_chgis_name)",
+      "日南郡/比景 (no_chgis_name)"
+    ],
+    "兖州": [
+      "陈留郡/平丘 (no_chgis_name)",
+      "陈留郡/长垣 (no_chgis_name)",
+      "陈留郡/己吾 (no_chgis_name)",
+      "东郡/濮阳 (no_chgis_name)",
+      "东郡/谷城 (ambiguous_no_jun)",
+      "济阴郡/离狐 (no_chgis_name)",
+      "济阴郡/己氏 (no_chgis_name)"
+    ],
+    "冀州": [
+      "巨鹿郡/南䜌 (no_chgis_name)",
+      "常山国/都乡 (no_chgis_name)",
+      "清河国/灵 (no_chgis_name)"
+    ],
+    "凉州": [
+      "陇西郡/安故 (no_chgis_name)",
+      "陇西郡/氐道 (no_chgis_name)",
+      "陇西郡/大夏 (no_chgis_name)",
+      "陇西郡/铀罕 (no_chgis_name)",
+      "陇西郡/河关 (no_chgis_name)",
+      "汉阳郡/望垣 (no_chgis_name)",
+      "汉阳郡/阿阳 (no_chgis_name)",
+      "汉阳郡/略阳 (no_chgis_name)",
+      "汉阳郡/勇士 (no_chgis_name)",
+      "汉阳郡/成纪 (no_chgis_name)",
+      "汉阳郡/陇 (no_chgis_name)",
+      "汉阳郡/豲道 (no_chgis_name)",
+      "汉阳郡/兰干 (no_chgis_name)",
+      "汉阳郡/平襄 (no_chgis_name)",
+      "汉阳郡/显亲 (no_chgis_name)",
+      "汉阳郡/上邽 (no_chgis_name)",
+      "武都郡/下辩 (no_chgis_name)",
+      "武都郡/武都道 (no_chgis_name)",
+      "武都郡/上禄 (no_chgis_name)",
+      "武都郡/河池 (no_chgis_name)",
+      "武都郡/羌道 (no_chgis_name)",
+      "金城郡/允吾 (no_chgis_name)",
+      "金城郡/浩亹 (no_chgis_name)",
+      "金城郡/令居 (no_chgis_name)",
+      "金城郡/枝阳 (no_chgis_name)",
+      "金城郡/楡中 (no_chgis_name)",
+      "金城郡/允街 (no_chgis_name)",
+      "安定郡/临泾 (no_chgis_name)",
+      "安定郡/乌枝 (no_chgis_name)",
+      "安定郡/三水 (no_chgis_name)",
+      "安定郡/彭阳 (no_chgis_name)",
+      "安定郡/鹑觚 (no_chgis_name)",
+      "北地郡/参峦 (no_chgis_name)",
+      "北地郡/灵州 (no_chgis_name)",
+      "武威郡/姑臧 (no_chgis_name)",
+      "武威郡/张掖 (no_chgis_name)",
+      "武威郡/武威 (no_chgis_name)",
+      "武威郡/休屠 (no_chgis_name)",
+      "武威郡/揟次 (no_chgis_name)",
+      "武威郡/鸾鸟 (no_chgis_name)",
+      "武威郡/扑环 (no_chgis_name)",
+      "武威郡/媪围 (no_chgis_name)",
+      "武威郡/宣威 (no_chgis_name)",
+      "武威郡/仓松 (no_chgis_name)",
+      "武威郡/鹯阴 (no_chgis_name)",
+      "武威郡/租厉 (no_chgis_name)",
+      "武威郡/左骑 (no_chgis_name)",
+      "酒泉郡/福禄 (no_chgis_name)",
+      "酒泉郡/表氏 (no_chgis_name)",
+      "酒泉郡/乐涫 (no_chgis_name)",
+      "酒泉郡/会水 (no_chgis_name)",
+      "酒泉郡/沙头 (no_chgis_name)",
+      "酒泉郡/安弥 (no_chgis_name)",
+      "酒泉郡/干齐 (no_chgis_name)",
+      "敦煌郡/广至 (no_chgis_name)",
+      "敦煌郡/龙勒 (out_of_bounds)",
+      "张掖属国/左骑 (no_chgis_name)",
+      "张掖属国/千人 (no_chgis_name)",
+      "张掖属国/司马官 (no_chgis_name)",
+      "张掖属国/千人官 (no_chgis_name)"
+    ],
+    "司隶": [
+      "河南尹/梁 (no_chgis_name)",
+      "河东郡/蒲子 (no_chgis_name)",
+      "京兆尹/阳陵 (no_chgis_name)",
+      "左冯翊/祋祤 (no_chgis_name)",
+      "左冯翊/频阳 (no_chgis_name)",
+      "左冯翊/莲勺 (no_chgis_name)",
+      "右扶风/安陵 (no_chgis_name)",
+      "右扶风/汧 (no_chgis_name)",
+      "右扶风/雍 (no_chgis_name)",
+      "右扶风/美阳 (no_chgis_name)",
+      "右扶风/杜阳 (no_chgis_name)"
+    ],
+    "并州": [
+      "太原郡/晋阳 (no_chgis_name)",
+      "太原郡/楡次 (no_chgis_name)",
+      "太原郡/于离 (no_chgis_name)",
+      "太原郡/兹氏 (no_chgis_name)",
+      "太原郡/平陶 (no_chgis_name)",
+      "上郡/白土 (no_chgis_name)",
+      "上郡/漆垣 (no_chgis_name)",
+      "上郡/奢延 (no_chgis_name)",
+      "上郡/桢林 (no_chgis_name)",
+      "上郡/高奴 (no_chgis_name)",
+      "上郡/亀兹属国 (no_chgis_name)",
+      "西河郡/离石 (no_chgis_name)",
+      "西河郡/平定 (no_chgis_name)",
+      "西河郡/美稷 (no_chgis_name)",
+      "西河郡/乐街 (no_chgis_name)",
+      "西河郡/中阳 (no_chgis_name)",
+      "西河郡/皐狼 (no_chgis_name)",
+      "西河郡/平周 (no_chgis_name)",
+      "西河郡/平陆 (no_chgis_name)",
+      "西河郡/益兰 (no_chgis_name)",
+      "西河郡/蔺 (no_chgis_name)",
+      "西河郡/圜阳 (no_chgis_name)",
+      "西河郡/广衍 (no_chgis_name)",
+      "五原郡/五原 (no_chgis_name)",
+      "五原郡/临沃 (no_chgis_name)",
+      "五原郡/文国 (no_chgis_name)",
+      "五原郡/武都 (no_chgis_name)",
+      "五原郡/宜梁 (no_chgis_name)",
+      "五原郡/曼柏 (no_chgis_name)",
+      "五原郡/成宜 (no_chgis_name)",
+      "五原郡/西安阳 (no_chgis_name)",
+      "云中郡/咸阳 (no_chgis_name)",
+      "云中郡/箕陵 (no_chgis_name)",
+      "云中郡/沙陵 (no_chgis_name)",
+      "云中郡/沙南 (no_chgis_name)",
+      "云中郡/北舆 (no_chgis_name)",
+      "云中郡/武泉 (no_chgis_name)",
+      "云中郡/原阳 (no_chgis_name)",
+      "云中郡/成乐 (no_chgis_name)",
+      "定襄郡/桐过 (no_chgis_name)",
+      "定襄郡/武成 (no_chgis_name)",
+      "定襄郡/骆 (no_chgis_name)",
+      "雁门郡/武州 (no_chgis_name)",
+      "雁门郡/汪陶 (no_chgis_name)",
+      "雁门郡/强阴 (no_chgis_name)",
+      "朔方郡/临戎 (no_chgis_name)",
+      "朔方郡/三封 (no_chgis_name)",
+      "朔方郡/朔方 (no_chgis_name)",
+      "朔方郡/沃野 (no_chgis_name)",
+      "朔方郡/广牧 (no_chgis_name)",
+      "朔方郡/大城 (no_chgis_name)"
+    ],
+    "幽州": [
+      "涿郡/迺 (no_chgis_name)",
+      "广阳郡/蓟 (no_chgis_name)",
+      "广阳郡/军都 (no_chgis_name)",
+      "上谷郡/寗 (no_chgis_name)",
+      "上谷郡/广寗 (no_chgis_name)",
+      "上谷郡/居庸 (no_chgis_name)",
+      "渔阳郡/渔阳 (no_chgis_name)",
+      "渔阳郡/狐奴 (no_chgis_name)",
+      "渔阳郡/雍奴 (no_chgis_name)",
+      "渔阳郡/平谷 (no_chgis_name)",
+      "渔阳郡/安乐 (no_chgis_name)",
+      "渔阳郡/犷平 (no_chgis_name)",
+      "右北平郡/无终 (no_chgis_name)",
+      "辽东郡/襄平 (no_chgis_name)",
+      "辽东郡/无虑 (no_chgis_name)",
+      "辽东郡/望平 (no_chgis_name)",
+      "辽东郡/候城 (no_chgis_name)",
+      "辽东郡/安市 (no_chgis_name)",
+      "辽东郡/平郭 (no_chgis_name)",
+      "辽东郡/西安平 (no_chgis_name)",
+      "辽东郡/汶 (no_chgis_name)",
+      "辽东郡/番汗 (no_chgis_name)",
+      "辽东郡/沓氏 (no_chgis_name)",
+      "玄菟郡/高句骊 (no_chgis_name)",
+      "玄菟郡/西盖马 (no_chgis_name)",
+      "玄菟郡/上殷台 (no_chgis_name)",
+      "玄菟郡/高显 (no_chgis_name)",
+      "玄菟郡/候城 (no_chgis_name)",
+      "玄菟郡/辽阳 (no_chgis_name)",
+      "乐浪郡/朝鲜 (no_chgis_name)",
+      "乐浪郡/䛁邯 (no_chgis_name)",
+      "乐浪郡/浿水 (no_chgis_name)",
+      "乐浪郡/含资 (no_chgis_name)",
+      "乐浪郡/占蝉 (no_chgis_name)",
+      "乐浪郡/遂城 (no_chgis_name)",
+      "乐浪郡/増地 (no_chgis_name)",
+      "乐浪郡/带方 (no_chgis_name)",
+      "乐浪郡/驷望 (no_chgis_name)",
+      "乐浪郡/海冥 (no_chgis_name)",
+      "乐浪郡/列口 (no_chgis_name)",
+      "乐浪郡/长岑 (no_chgis_name)",
+      "乐浪郡/屯有 (no_chgis_name)",
+      "乐浪郡/昭明 (no_chgis_name)",
+      "乐浪郡/镂方 (no_chgis_name)",
+      "乐浪郡/提奚 (no_chgis_name)",
+      "乐浪郡/浑弥 (no_chgis_name)",
+      "乐浪郡/乐都 (no_chgis_name)",
+      "辽东属国/昌辽 (no_chgis_name)",
+      "辽东属国/宾徒 (no_chgis_name)",
+      "辽东属国/徒河 (no_chgis_name)",
+      "辽东属国/无虑 (no_chgis_name)",
+      "辽东属国/险渎 (no_chgis_name)",
+      "辽东属国/房 (no_chgis_name)"
+    ],
+    "徐州": [
+      "东海郡/郯 (no_chgis_name)",
+      "琅邪国/西海 (no_chgis_name)",
+      "彭城国/梧 (no_chgis_name)",
+      "彭城国/菑丘 (no_chgis_name)",
+      "下邳国/高山 (no_chgis_name)",
+      "下邳国/潘旌 (no_chgis_name)",
+      "下邳国/东成 (no_chgis_name)"
+    ],
+    "扬州": [
+      "九江郡/浚遒 (no_chgis_name)",
+      "庐江郡/潜 (no_chgis_name)",
+      "庐江郡/六安国 (no_chgis_name)",
+      "会稽郡/东部 (no_chgis_name)",
+      "吴郡/安 (no_chgis_name)",
+      "豫章郡/海昬 (no_chgis_name)"
+    ],
+    "益州": [
+      "巴郡/胊忍 (no_chgis_name)",
+      "巴郡/涪陵 (no_chgis_name)",
+      "广汉郡/白水 (no_chgis_name)",
+      "广汉郡/葭萌 (no_chgis_name)",
+      "广汉郡/广汉 (no_chgis_name)",
+      "蜀郡/湔氐道 (no_chgis_name)",
+      "蜀郡/八陵 (no_chgis_name)",
+      "牂牁郡/同竝 (no_chgis_name)",
+      "牂牁郡/谈稾 (no_chgis_name)",
+      "牂牁郡/漏江 (no_chgis_name)",
+      "牂牁郡/进乗 (no_chgis_name)",
+      "牂牁郡/西随 (no_chgis_name)",
+      "越巂郡/灵关道 (no_chgis_name)",
+      "越巂郡/卑水 (no_chgis_name)",
+      "越巂郡/三缝 (no_chgis_name)",
+      "越巂郡/会无 (no_chgis_name)",
+      "越巂郡/定莋 (no_chgis_name)",
+      "越巂郡/苏示 (no_chgis_name)",
+      "越巂郡/大莋 (no_chgis_name)",
+      "越巂郡/莋秦 (no_chgis_name)",
+      "越巂郡/姑复 (no_chgis_name)",
+      "益州郡/胜休 (no_chgis_name)",
+      "益州郡/俞元 (no_chgis_name)",
+      "益州郡/律高 (no_chgis_name)",
+      "益州郡/毋棳 (no_chgis_name)",
+      "益州郡/同労 (no_chgis_name)",
+      "益州郡/梇栋 (no_chgis_name)",
+      "益州郡/秦臧 (no_chgis_name)",
+      "永昌郡/楪楡 (no_chgis_name)",
+      "永昌郡/邪龙 (no_chgis_name)",
+      "广汉属国/阴平道 (no_chgis_name)",
+      "广汉属国/甸氐道 (no_chgis_name)",
+      "广汉属国/刚氐道 (no_chgis_name)",
+      "蜀郡属国/旄牛 (no_chgis_name)",
+      "犍为属国/汉阳 (no_chgis_name)"
+    ],
+    "荆州": [
+      "南阳郡/涅阳 (no_chgis_name)",
+      "南阳郡/顺阳 (no_chgis_name)",
+      "南阳郡/丹水 (no_chgis_name)"
+    ],
+    "豫州": [
+      "汝南郡/北宜春 (no_chgis_name)",
+      "汝南郡/隐强 (no_chgis_name)",
+      "汝南郡/灈阳 (no_chgis_name)",
+      "汝南郡/鲖阳 (no_chgis_name)",
+      "汝南郡/宋 (no_chgis_name)",
+      "汝南郡/定颍 (no_chgis_name)",
+      "汝南郡/固始 (no_chgis_name)",
+      "梁国/鄢 (no_chgis_name)",
+      "沛国/郸 (no_chgis_name)",
+      "鲁国/鲁国 (no_chgis_name)"
+    ],
+    "青州": [
+      "乐安国/蓼城 (no_chgis_name)",
+      "北海国/壮武 (no_chgis_name)",
+      "北海国/拒挺 (no_chgis_name)",
+      "东莱郡/惤 (no_chgis_name)",
+      "东莱郡/曲成 (no_chgis_name)",
+      "东莱郡/葛卢 (no_chgis_name)"
+    ]
+  },
+  "unmatched": [
+    {
+      "xian_id": "xian:司隶/河南尹/梁",
+      "zhou": "司隶",
+      "jun": "河南尹",
+      "name": "梁",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/河东郡/蒲子",
+      "zhou": "司隶",
+      "jun": "河东郡",
+      "name": "蒲子",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/京兆尹/阳陵",
+      "zhou": "司隶",
+      "jun": "京兆尹",
+      "name": "阳陵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/左冯翊/祋祤",
+      "zhou": "司隶",
+      "jun": "左冯翊",
+      "name": "祋祤",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/左冯翊/频阳",
+      "zhou": "司隶",
+      "jun": "左冯翊",
+      "name": "频阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/左冯翊/莲勺",
+      "zhou": "司隶",
+      "jun": "左冯翊",
+      "name": "莲勺",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/右扶风/安陵",
+      "zhou": "司隶",
+      "jun": "右扶风",
+      "name": "安陵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/右扶风/汧",
+      "zhou": "司隶",
+      "jun": "右扶风",
+      "name": "汧",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/右扶风/雍",
+      "zhou": "司隶",
+      "jun": "右扶风",
+      "name": "雍",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/右扶风/美阳",
+      "zhou": "司隶",
+      "jun": "右扶风",
+      "name": "美阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:司隶/右扶风/杜阳",
+      "zhou": "司隶",
+      "jun": "右扶风",
+      "name": "杜阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/北宜春",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "北宜春",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/隐强",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "隐强",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/灈阳",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "灈阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/鲖阳",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "鲖阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/宋",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "宋",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/定颍",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "定颍",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/汝南郡/固始",
+      "zhou": "豫州",
+      "jun": "汝南郡",
+      "name": "固始",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/梁国/鄢",
+      "zhou": "豫州",
+      "jun": "梁国",
+      "name": "鄢",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/沛国/郸",
+      "zhou": "豫州",
+      "jun": "沛国",
+      "name": "郸",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:豫州/鲁国/鲁国",
+      "zhou": "豫州",
+      "jun": "鲁国",
+      "name": "鲁国",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:冀州/巨鹿郡/南䜌",
+      "zhou": "冀州",
+      "jun": "巨鹿郡",
+      "name": "南䜌",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:冀州/常山国/都乡",
+      "zhou": "冀州",
+      "jun": "常山国",
+      "name": "都乡",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:冀州/清河国/灵",
+      "zhou": "冀州",
+      "jun": "清河国",
+      "name": "灵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:兖州/陈留郡/平丘",
+      "zhou": "兖州",
+      "jun": "陈留郡",
+      "name": "平丘",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:兖州/陈留郡/长垣",
+      "zhou": "兖州",
+      "jun": "陈留郡",
+      "name": "长垣",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:兖州/陈留郡/己吾",
+      "zhou": "兖州",
+      "jun": "陈留郡",
+      "name": "己吾",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:兖州/东郡/濮阳",
+      "zhou": "兖州",
+      "jun": "东郡",
+      "name": "濮阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:兖州/东郡/谷城",
+      "zhou": "兖州",
+      "jun": "东郡",
+      "name": "谷城",
+      "reason": "ambiguous_no_jun",
+      "n_candidates": 2
+    },
+    {
+      "xian_id": "xian:兖州/济阴郡/离狐",
+      "zhou": "兖州",
+      "jun": "济阴郡",
+      "name": "离狐",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:兖州/济阴郡/己氏",
+      "zhou": "兖州",
+      "jun": "济阴郡",
+      "name": "己氏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/东海郡/郯",
+      "zhou": "徐州",
+      "jun": "东海郡",
+      "name": "郯",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/琅邪国/西海",
+      "zhou": "徐州",
+      "jun": "琅邪国",
+      "name": "西海",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/彭城国/梧",
+      "zhou": "徐州",
+      "jun": "彭城国",
+      "name": "梧",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/彭城国/菑丘",
+      "zhou": "徐州",
+      "jun": "彭城国",
+      "name": "菑丘",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/下邳国/高山",
+      "zhou": "徐州",
+      "jun": "下邳国",
+      "name": "高山",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/下邳国/潘旌",
+      "zhou": "徐州",
+      "jun": "下邳国",
+      "name": "潘旌",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:徐州/下邳国/东成",
+      "zhou": "徐州",
+      "jun": "下邳国",
+      "name": "东成",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:青州/乐安国/蓼城",
+      "zhou": "青州",
+      "jun": "乐安国",
+      "name": "蓼城",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:青州/北海国/壮武",
+      "zhou": "青州",
+      "jun": "北海国",
+      "name": "壮武",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:青州/北海国/拒挺",
+      "zhou": "青州",
+      "jun": "北海国",
+      "name": "拒挺",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:青州/东莱郡/惤",
+      "zhou": "青州",
+      "jun": "东莱郡",
+      "name": "惤",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:青州/东莱郡/曲成",
+      "zhou": "青州",
+      "jun": "东莱郡",
+      "name": "曲成",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:青州/东莱郡/葛卢",
+      "zhou": "青州",
+      "jun": "东莱郡",
+      "name": "葛卢",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:荆州/南阳郡/涅阳",
+      "zhou": "荆州",
+      "jun": "南阳郡",
+      "name": "涅阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:荆州/南阳郡/顺阳",
+      "zhou": "荆州",
+      "jun": "南阳郡",
+      "name": "顺阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:荆州/南阳郡/丹水",
+      "zhou": "荆州",
+      "jun": "南阳郡",
+      "name": "丹水",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:扬州/九江郡/浚遒",
+      "zhou": "扬州",
+      "jun": "九江郡",
+      "name": "浚遒",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:扬州/庐江郡/潜",
+      "zhou": "扬州",
+      "jun": "庐江郡",
+      "name": "潜",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:扬州/庐江郡/六安国",
+      "zhou": "扬州",
+      "jun": "庐江郡",
+      "name": "六安国",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:扬州/会稽郡/东部",
+      "zhou": "扬州",
+      "jun": "会稽郡",
+      "name": "东部",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:扬州/吴郡/安",
+      "zhou": "扬州",
+      "jun": "吴郡",
+      "name": "安",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:扬州/豫章郡/海昬",
+      "zhou": "扬州",
+      "jun": "豫章郡",
+      "name": "海昬",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/巴郡/胊忍",
+      "zhou": "益州",
+      "jun": "巴郡",
+      "name": "胊忍",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/巴郡/涪陵",
+      "zhou": "益州",
+      "jun": "巴郡",
+      "name": "涪陵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/广汉郡/白水",
+      "zhou": "益州",
+      "jun": "广汉郡",
+      "name": "白水",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/广汉郡/葭萌",
+      "zhou": "益州",
+      "jun": "广汉郡",
+      "name": "葭萌",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/广汉郡/广汉",
+      "zhou": "益州",
+      "jun": "广汉郡",
+      "name": "广汉",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/蜀郡/湔氐道",
+      "zhou": "益州",
+      "jun": "蜀郡",
+      "name": "湔氐道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/蜀郡/八陵",
+      "zhou": "益州",
+      "jun": "蜀郡",
+      "name": "八陵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/牂牁郡/同竝",
+      "zhou": "益州",
+      "jun": "牂牁郡",
+      "name": "同竝",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/牂牁郡/谈稾",
+      "zhou": "益州",
+      "jun": "牂牁郡",
+      "name": "谈稾",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/牂牁郡/漏江",
+      "zhou": "益州",
+      "jun": "牂牁郡",
+      "name": "漏江",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/牂牁郡/进乗",
+      "zhou": "益州",
+      "jun": "牂牁郡",
+      "name": "进乗",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/牂牁郡/西随",
+      "zhou": "益州",
+      "jun": "牂牁郡",
+      "name": "西随",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/灵关道",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "灵关道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/卑水",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "卑水",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/三缝",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "三缝",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/会无",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "会无",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/定莋",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "定莋",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/苏示",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "苏示",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/大莋",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "大莋",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/莋秦",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "莋秦",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/越巂郡/姑复",
+      "zhou": "益州",
+      "jun": "越巂郡",
+      "name": "姑复",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/胜休",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "胜休",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/俞元",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "俞元",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/律高",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "律高",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/毋棳",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "毋棳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/同労",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "同労",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/梇栋",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "梇栋",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/益州郡/秦臧",
+      "zhou": "益州",
+      "jun": "益州郡",
+      "name": "秦臧",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/永昌郡/楪楡",
+      "zhou": "益州",
+      "jun": "永昌郡",
+      "name": "楪楡",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/永昌郡/邪龙",
+      "zhou": "益州",
+      "jun": "永昌郡",
+      "name": "邪龙",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/广汉属国/阴平道",
+      "zhou": "益州",
+      "jun": "广汉属国",
+      "name": "阴平道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/广汉属国/甸氐道",
+      "zhou": "益州",
+      "jun": "广汉属国",
+      "name": "甸氐道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/广汉属国/刚氐道",
+      "zhou": "益州",
+      "jun": "广汉属国",
+      "name": "刚氐道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/蜀郡属国/旄牛",
+      "zhou": "益州",
+      "jun": "蜀郡属国",
+      "name": "旄牛",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:益州/犍为属国/汉阳",
+      "zhou": "益州",
+      "jun": "犍为属国",
+      "name": "汉阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/陇西郡/安故",
+      "zhou": "凉州",
+      "jun": "陇西郡",
+      "name": "安故",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/陇西郡/氐道",
+      "zhou": "凉州",
+      "jun": "陇西郡",
+      "name": "氐道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/陇西郡/大夏",
+      "zhou": "凉州",
+      "jun": "陇西郡",
+      "name": "大夏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/陇西郡/铀罕",
+      "zhou": "凉州",
+      "jun": "陇西郡",
+      "name": "铀罕",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/陇西郡/河关",
+      "zhou": "凉州",
+      "jun": "陇西郡",
+      "name": "河关",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/望垣",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "望垣",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/阿阳",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "阿阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/略阳",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "略阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/勇士",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "勇士",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/成纪",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "成纪",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/陇",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "陇",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/豲道",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "豲道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/兰干",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "兰干",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/平襄",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "平襄",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/显亲",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "显亲",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/汉阳郡/上邽",
+      "zhou": "凉州",
+      "jun": "汉阳郡",
+      "name": "上邽",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武都郡/下辩",
+      "zhou": "凉州",
+      "jun": "武都郡",
+      "name": "下辩",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武都郡/武都道",
+      "zhou": "凉州",
+      "jun": "武都郡",
+      "name": "武都道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武都郡/上禄",
+      "zhou": "凉州",
+      "jun": "武都郡",
+      "name": "上禄",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武都郡/河池",
+      "zhou": "凉州",
+      "jun": "武都郡",
+      "name": "河池",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武都郡/羌道",
+      "zhou": "凉州",
+      "jun": "武都郡",
+      "name": "羌道",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/金城郡/允吾",
+      "zhou": "凉州",
+      "jun": "金城郡",
+      "name": "允吾",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/金城郡/浩亹",
+      "zhou": "凉州",
+      "jun": "金城郡",
+      "name": "浩亹",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/金城郡/令居",
+      "zhou": "凉州",
+      "jun": "金城郡",
+      "name": "令居",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/金城郡/枝阳",
+      "zhou": "凉州",
+      "jun": "金城郡",
+      "name": "枝阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/金城郡/楡中",
+      "zhou": "凉州",
+      "jun": "金城郡",
+      "name": "楡中",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/金城郡/允街",
+      "zhou": "凉州",
+      "jun": "金城郡",
+      "name": "允街",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/安定郡/临泾",
+      "zhou": "凉州",
+      "jun": "安定郡",
+      "name": "临泾",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/安定郡/乌枝",
+      "zhou": "凉州",
+      "jun": "安定郡",
+      "name": "乌枝",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/安定郡/三水",
+      "zhou": "凉州",
+      "jun": "安定郡",
+      "name": "三水",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/安定郡/彭阳",
+      "zhou": "凉州",
+      "jun": "安定郡",
+      "name": "彭阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/安定郡/鹑觚",
+      "zhou": "凉州",
+      "jun": "安定郡",
+      "name": "鹑觚",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/北地郡/参峦",
+      "zhou": "凉州",
+      "jun": "北地郡",
+      "name": "参峦",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/北地郡/灵州",
+      "zhou": "凉州",
+      "jun": "北地郡",
+      "name": "灵州",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/姑臧",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "姑臧",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/张掖",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "张掖",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/武威",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "武威",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/休屠",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "休屠",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/揟次",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "揟次",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/鸾鸟",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "鸾鸟",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/扑环",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "扑环",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/媪围",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "媪围",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/宣威",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "宣威",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/仓松",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "仓松",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/鹯阴",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "鹯阴",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/租厉",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "租厉",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/武威郡/左骑",
+      "zhou": "凉州",
+      "jun": "武威郡",
+      "name": "左骑",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/福禄",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "福禄",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/表氏",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "表氏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/乐涫",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "乐涫",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/会水",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "会水",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/沙头",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "沙头",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/安弥",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "安弥",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/酒泉郡/干齐",
+      "zhou": "凉州",
+      "jun": "酒泉郡",
+      "name": "干齐",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/敦煌郡/广至",
+      "zhou": "凉州",
+      "jun": "敦煌郡",
+      "name": "广至",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/敦煌郡/龙勒",
+      "zhou": "凉州",
+      "jun": "敦煌郡",
+      "name": "龙勒",
+      "reason": "out_of_bounds",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/张掖属国/左骑",
+      "zhou": "凉州",
+      "jun": "张掖属国",
+      "name": "左骑",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/张掖属国/千人",
+      "zhou": "凉州",
+      "jun": "张掖属国",
+      "name": "千人",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/张掖属国/司马官",
+      "zhou": "凉州",
+      "jun": "张掖属国",
+      "name": "司马官",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:凉州/张掖属国/千人官",
+      "zhou": "凉州",
+      "jun": "张掖属国",
+      "name": "千人官",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/太原郡/晋阳",
+      "zhou": "并州",
+      "jun": "太原郡",
+      "name": "晋阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/太原郡/楡次",
+      "zhou": "并州",
+      "jun": "太原郡",
+      "name": "楡次",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/太原郡/于离",
+      "zhou": "并州",
+      "jun": "太原郡",
+      "name": "于离",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/太原郡/兹氏",
+      "zhou": "并州",
+      "jun": "太原郡",
+      "name": "兹氏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/太原郡/平陶",
+      "zhou": "并州",
+      "jun": "太原郡",
+      "name": "平陶",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/上郡/白土",
+      "zhou": "并州",
+      "jun": "上郡",
+      "name": "白土",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/上郡/漆垣",
+      "zhou": "并州",
+      "jun": "上郡",
+      "name": "漆垣",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/上郡/奢延",
+      "zhou": "并州",
+      "jun": "上郡",
+      "name": "奢延",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/上郡/桢林",
+      "zhou": "并州",
+      "jun": "上郡",
+      "name": "桢林",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/上郡/高奴",
+      "zhou": "并州",
+      "jun": "上郡",
+      "name": "高奴",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/上郡/亀兹属国",
+      "zhou": "并州",
+      "jun": "上郡",
+      "name": "亀兹属国",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/离石",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "离石",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/平定",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "平定",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/美稷",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "美稷",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/乐街",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "乐街",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/中阳",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "中阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/皐狼",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "皐狼",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/平周",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "平周",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/平陆",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "平陆",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/益兰",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "益兰",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/蔺",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "蔺",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/圜阳",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "圜阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/西河郡/广衍",
+      "zhou": "并州",
+      "jun": "西河郡",
+      "name": "广衍",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/五原",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "五原",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/临沃",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "临沃",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/文国",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "文国",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/武都",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "武都",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/宜梁",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "宜梁",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/曼柏",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "曼柏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/成宜",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "成宜",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/五原郡/西安阳",
+      "zhou": "并州",
+      "jun": "五原郡",
+      "name": "西安阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/咸阳",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "咸阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/箕陵",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "箕陵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/沙陵",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "沙陵",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/沙南",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "沙南",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/北舆",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "北舆",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/武泉",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "武泉",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/原阳",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "原阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/云中郡/成乐",
+      "zhou": "并州",
+      "jun": "云中郡",
+      "name": "成乐",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/定襄郡/桐过",
+      "zhou": "并州",
+      "jun": "定襄郡",
+      "name": "桐过",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/定襄郡/武成",
+      "zhou": "并州",
+      "jun": "定襄郡",
+      "name": "武成",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/定襄郡/骆",
+      "zhou": "并州",
+      "jun": "定襄郡",
+      "name": "骆",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/雁门郡/武州",
+      "zhou": "并州",
+      "jun": "雁门郡",
+      "name": "武州",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/雁门郡/汪陶",
+      "zhou": "并州",
+      "jun": "雁门郡",
+      "name": "汪陶",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/雁门郡/强阴",
+      "zhou": "并州",
+      "jun": "雁门郡",
+      "name": "强阴",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/朔方郡/临戎",
+      "zhou": "并州",
+      "jun": "朔方郡",
+      "name": "临戎",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/朔方郡/三封",
+      "zhou": "并州",
+      "jun": "朔方郡",
+      "name": "三封",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/朔方郡/朔方",
+      "zhou": "并州",
+      "jun": "朔方郡",
+      "name": "朔方",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/朔方郡/沃野",
+      "zhou": "并州",
+      "jun": "朔方郡",
+      "name": "沃野",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/朔方郡/广牧",
+      "zhou": "并州",
+      "jun": "朔方郡",
+      "name": "广牧",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:并州/朔方郡/大城",
+      "zhou": "并州",
+      "jun": "朔方郡",
+      "name": "大城",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/涿郡/迺",
+      "zhou": "幽州",
+      "jun": "涿郡",
+      "name": "迺",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/广阳郡/蓟",
+      "zhou": "幽州",
+      "jun": "广阳郡",
+      "name": "蓟",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/广阳郡/军都",
+      "zhou": "幽州",
+      "jun": "广阳郡",
+      "name": "军都",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/上谷郡/寗",
+      "zhou": "幽州",
+      "jun": "上谷郡",
+      "name": "寗",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/上谷郡/广寗",
+      "zhou": "幽州",
+      "jun": "上谷郡",
+      "name": "广寗",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/上谷郡/居庸",
+      "zhou": "幽州",
+      "jun": "上谷郡",
+      "name": "居庸",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/渔阳郡/渔阳",
+      "zhou": "幽州",
+      "jun": "渔阳郡",
+      "name": "渔阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/渔阳郡/狐奴",
+      "zhou": "幽州",
+      "jun": "渔阳郡",
+      "name": "狐奴",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/渔阳郡/雍奴",
+      "zhou": "幽州",
+      "jun": "渔阳郡",
+      "name": "雍奴",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/渔阳郡/平谷",
+      "zhou": "幽州",
+      "jun": "渔阳郡",
+      "name": "平谷",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/渔阳郡/安乐",
+      "zhou": "幽州",
+      "jun": "渔阳郡",
+      "name": "安乐",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/渔阳郡/犷平",
+      "zhou": "幽州",
+      "jun": "渔阳郡",
+      "name": "犷平",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/右北平郡/无终",
+      "zhou": "幽州",
+      "jun": "右北平郡",
+      "name": "无终",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/襄平",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "襄平",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/无虑",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "无虑",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/望平",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "望平",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/候城",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "候城",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/安市",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "安市",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/平郭",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "平郭",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/西安平",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "西安平",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/汶",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "汶",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/番汗",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "番汗",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东郡/沓氏",
+      "zhou": "幽州",
+      "jun": "辽东郡",
+      "name": "沓氏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/玄菟郡/高句骊",
+      "zhou": "幽州",
+      "jun": "玄菟郡",
+      "name": "高句骊",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/玄菟郡/西盖马",
+      "zhou": "幽州",
+      "jun": "玄菟郡",
+      "name": "西盖马",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/玄菟郡/上殷台",
+      "zhou": "幽州",
+      "jun": "玄菟郡",
+      "name": "上殷台",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/玄菟郡/高显",
+      "zhou": "幽州",
+      "jun": "玄菟郡",
+      "name": "高显",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/玄菟郡/候城",
+      "zhou": "幽州",
+      "jun": "玄菟郡",
+      "name": "候城",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/玄菟郡/辽阳",
+      "zhou": "幽州",
+      "jun": "玄菟郡",
+      "name": "辽阳",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/朝鲜",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "朝鲜",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/䛁邯",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "䛁邯",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/浿水",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "浿水",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/含资",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "含资",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/占蝉",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "占蝉",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/遂城",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "遂城",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/増地",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "増地",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/带方",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "带方",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/驷望",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "驷望",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/海冥",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "海冥",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/列口",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "列口",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/长岑",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "长岑",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/屯有",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "屯有",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/昭明",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "昭明",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/镂方",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "镂方",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/提奚",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "提奚",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/浑弥",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "浑弥",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/乐浪郡/乐都",
+      "zhou": "幽州",
+      "jun": "乐浪郡",
+      "name": "乐都",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东属国/昌辽",
+      "zhou": "幽州",
+      "jun": "辽东属国",
+      "name": "昌辽",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东属国/宾徒",
+      "zhou": "幽州",
+      "jun": "辽东属国",
+      "name": "宾徒",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东属国/徒河",
+      "zhou": "幽州",
+      "jun": "辽东属国",
+      "name": "徒河",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东属国/无虑",
+      "zhou": "幽州",
+      "jun": "辽东属国",
+      "name": "无虑",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东属国/险渎",
+      "zhou": "幽州",
+      "jun": "辽东属国",
+      "name": "险渎",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:幽州/辽东属国/房",
+      "zhou": "幽州",
+      "jun": "辽东属国",
+      "name": "房",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/南海郡/増城",
+      "zhou": "交州",
+      "jun": "南海郡",
+      "name": "増城",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/苍梧郡/端谿",
+      "zhou": "交州",
+      "jun": "苍梧郡",
+      "name": "端谿",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/苍梧郡/冯乗",
+      "zhou": "交州",
+      "jun": "苍梧郡",
+      "name": "冯乗",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/苍梧郡/鄣平",
+      "zhou": "交州",
+      "jun": "苍梧郡",
+      "name": "鄣平",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/郁林郡/桂林",
+      "zhou": "交州",
+      "jun": "郁林郡",
+      "name": "桂林",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/郁林郡/増食",
+      "zhou": "交州",
+      "jun": "郁林郡",
+      "name": "増食",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/合浦郡/临元",
+      "zhou": "交州",
+      "jun": "合浦郡",
+      "name": "临元",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/龙编",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "龙编",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/羸𨻻",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "羸𨻻",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/安定",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "安定",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/苟漏",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "苟漏",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/麊泠",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "麊泠",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/北带",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "北带",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/稽徐",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "稽徐",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/西于",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "西于",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/朱䳒",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "朱䳒",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/封谿",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "封谿",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/交趾郡/望海",
+      "zhou": "交州",
+      "jun": "交趾郡",
+      "name": "望海",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/九真郡/胥浦",
+      "zhou": "交州",
+      "jun": "九真郡",
+      "name": "胥浦",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/九真郡/居风",
+      "zhou": "交州",
+      "jun": "九真郡",
+      "name": "居风",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/九真郡/咸欢",
+      "zhou": "交州",
+      "jun": "九真郡",
+      "name": "咸欢",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/九真郡/无功",
+      "zhou": "交州",
+      "jun": "九真郡",
+      "name": "无功",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/九真郡/无编",
+      "zhou": "交州",
+      "jun": "九真郡",
+      "name": "无编",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/日南郡/西卷",
+      "zhou": "交州",
+      "jun": "日南郡",
+      "name": "西卷",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/日南郡/朱吾",
+      "zhou": "交州",
+      "jun": "日南郡",
+      "name": "朱吾",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/日南郡/卢容",
+      "zhou": "交州",
+      "jun": "日南郡",
+      "name": "卢容",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/日南郡/象林",
+      "zhou": "交州",
+      "jun": "日南郡",
+      "name": "象林",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    },
+    {
+      "xian_id": "xian:交州/日南郡/比景",
+      "zhou": "交州",
+      "jun": "日南郡",
+      "name": "比景",
+      "reason": "no_chgis_name",
+      "n_candidates": 0
+    }
+  ],
+  "matched_sample": [
+    {
+      "xian_id": "xian:司隶/河南尹/雒阳",
+      "name": "雒阳",
+      "zhou": "司隶",
+      "jun": "河南尹",
+      "lon": 112.5963,
+      "lat": 34.73157,
+      "col": 253,
+      "row": 148,
+      "q": 179,
+      "r": 148,
+      "snap_dist": 0,
+      "confidence": "high",
+      "source": "CHGIS_V6",
+      "chgis_sys_id": 82828,
+      "chgis_name": "雒阳县",
+      "match_how": "unique_name",
+      "year_filter": 140
+    },
+    {
+      "xian_id": "xian:司隶/河南尹/河南",
+      "name": "河南",
+      "zhou": "司隶",
+      "jun": "河南尹",
+      "lon": 112.41652,
+      "lat": 34.67085,
+      "col": 251,
+      "row": 149,
+      "q": 176,
+      "r": 149,
+      "snap_dist": 0,
+      "confidence": "high",
+      "source": "CHGIS_V6",
+      "chgis_sys_id": 82830,
+      "chgis_name": "河南县",
+      "match_how": "unique_name",
+      "year_filter": 140
+    },
+    {
+      "xian_id": "xian:司隶/河南尹/荥阳",
+      "name": "荥阳",
+      "zhou": "司隶",
+      "jun": "河南尹",
+      "lon": 113.53442,
+      "lat": 34.87436,
+      "col": 267,
+      "row": 145,
+      "q": 194,
+      "r": 145,
+      "snap_dist": 0,
+      "confidence": "high",
+      "source": "CHGIS_V6",
+      "chgis_sys_id": 44385,
+      "chgis_name": "荥阳县",
+      "match_how": "unique_name",
+      "year_filter": 140
+    },
+    {
+      "xian_id": "xian:司隶/河南尹/卷",
+      "name": "卷",
+      "zhou": "司隶",
+      "jun": "河南尹",
+      "lon": 113.78767,
+      "lat": 35.03897,
+      "col": 270,
+      "row": 142,
+      "q": 199,
+      "r": 142,
+      "snap_dist": 0,
+      "confidence": "high",
+      "source": "CHGIS_V6",
+      "chgis_sys_id": 82523,
+      "chgis_name": "卷县",
+      "match_how": "unique_name",
+      "year_filter": 140
+    },
+    {
+      "xian_id": "xian:司隶/河南尹/原武",
+      "name": "原武",
+      "zhou": "司隶",
+      "jun": "河南尹",
+      "lon": 113.96297,
+      "lat": 35.05195,
+      "col": 273,
+      "row": 142,
+      "q": 202,
+      "r": 142,
+      "snap_dist": 0,
+      "confidence": "high",
+      "source": "CHGIS_V6",
+      "chgis_sys_id": 82531,
+      "chgis_name": "原武县",
+      "match_how": "unique_name",
+      "year_filter": 140
+    }
+  ]
+}

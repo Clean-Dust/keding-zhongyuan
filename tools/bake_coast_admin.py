@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake coast_mask only (Natural Earth land → 160×160 hex centers).
+"""Bake coast_mask only (Natural Earth land → MAP_W×MAP_H hex centers).
 
 Admin geometry is NOT baked here. 州/郡/县 paint comes only from hand-filled
 per-hex `xian_id` + `data/counties_roster.json` parents (unions of 县 hexes).
@@ -18,10 +18,10 @@ import sys
 import zlib
 from pathlib import Path
 
-# Match Hex.gd geographic constants.
-LON_MIN, LON_MAX = 94.662, 125.69
-LAT_MIN, LAT_MAX = 15.55, 41.272
-MAP_W, MAP_H = 160, 160
+# Match Hex.gd geographic constants (Sinica ad0262 screenshot extent).
+LON_MIN, LON_MAX = 94.662, 130.0
+LAT_MIN, LAT_MAX = 15.55, 42.8
+MAP_W, MAP_H = 500, 500
 PAD = 0.5
 
 

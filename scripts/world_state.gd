@@ -102,6 +102,7 @@ func city_cells() -> Array[Vector2i]:
 
 static func _hex_is_sparse_worthy(h: Dictionary) -> bool:
 	## Water comes from coast_mask on load — do not sparse-store every sea hex.
+	## CHGIS xian_id fills are reapplied from xian_fills.* on blank-grid rebuild — not sparse-stored.
 	var t := str(h.get("terrain", "plain"))
 	if t == "water":
 		return false
@@ -109,7 +110,6 @@ static func _hex_is_sparse_worthy(h: Dictionary) -> bool:
 		t != "plain"
 		or str(h.get("owner_faction_id", "")) != ""
 		or str(h.get("prefecture_id", "")) != ""
-		or str(h.get("xian_id", "")) != ""
 		or bool(h.get("is_anchor", false))
 	)
 
@@ -128,7 +128,6 @@ func to_dict() -> Dictionary:
 			"terrain": str(h.get("terrain", "plain")),
 			"owner_faction_id": str(h.get("owner_faction_id", "")),
 			"is_anchor": bool(h.get("is_anchor", false)),
-			"xian_id": str(h.get("xian_id", "")),
 		})
 	return {
 		"map_w": map_w,
@@ -163,6 +162,14 @@ func from_dict(d: Dictionary) -> void:
 	if d.has("hex_sparse") or d.has("map_w"):
 		map_w = int(d.get("map_w", Hex.MAP_W))
 		map_h = int(d.get("map_h", Hex.MAP_H))
+		## Legacy 160×160 (or other) saves → rebuild on current locked grid/bbox.
+		if map_w != Hex.MAP_W or map_h != Hex.MAP_H:
+			map_w = Hex.MAP_W
+			map_h = Hex.MAP_H
+			hexes = MapFactory.build_blank_grid(map_w, map_h)
+			rebuild_indexes()
+			changed.emit()
+			return
 		hexes = MapFactory.build_blank_grid(map_w, map_h)
 		rebuild_indexes()
 		for s in d.get("hex_sparse", []):
@@ -176,18 +183,12 @@ func from_dict(d: Dictionary) -> void:
 			h.terrain = str(s.get("terrain", "plain"))
 			h.owner_faction_id = str(s.get("owner_faction_id", ""))
 			h.is_anchor = bool(s.get("is_anchor", str(h.terrain) == "city"))
-			h.xian_id = str(s.get("xian_id", ""))
+			## Keep baked CHGIS xian_id from build_blank_grid (do not clear from sparse).
 	elif d.has("hexes"):
-		## Legacy full-array saves (tiny map).
-		hexes = d.get("hexes", []).duplicate(true)
-		map_w = int(d.get("map_w", 0))
-		map_h = int(d.get("map_h", 0))
-		if map_w <= 0 or map_h <= 0:
-			map_w = Hex.MAP_W
-			map_h = Hex.MAP_H
-		## Older saves used 108 / 122; bump to locked square HEIGHT when loading legacy dims.
-		if map_w == Hex.MAP_W and (map_h == 108 or map_h == 122):
-			map_h = Hex.MAP_H
+		## Legacy full-array saves (tiny map) — always remake on current grid.
+		map_w = Hex.MAP_W
+		map_h = Hex.MAP_H
+		hexes = MapFactory.build_blank_grid(map_w, map_h)
 	rebuild_indexes()
 	changed.emit()
 

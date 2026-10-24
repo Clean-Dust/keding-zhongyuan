@@ -3,16 +3,16 @@
 **时代框定：** 184–280（三国跨度）
 **基线：** 《续汉书·郡国志》（《后汉书》志），永和五年（140）郡县名 — 适合作汉末/早三国起点。
 **州制：** 东汉十三州（司隶 + 十二州刺史部）。
-**本文件范围：** **仅名单**（无治所坐标、无 hex 归属）。
+**本文件范围：** **名单**（治所见 `county_seats.json`；hex 归属见 `xian_fills.*`）。
 
-## 后续手工管线（本任务不做）
+## 管线
 
 1. ~~县名单~~（本文件）
-2. 按实坐标逐个落座县治
-3. 手工填写 hex 范围
-4. 郡/州 = 所辖县之并集
+2. ~~治所落座~~ → [`county_seats.json`](county_seats.json)（**CHGIS-only**；未匹配见 report）
+3. ~~县 hex 填充~~ → [`xian_fills.json`](xian_fills.json) + `xian_fills.bin`（CHGIS@140 县治点 Thiessen → hex 中心 PIP；非矢量一一对应）
+4. 郡/州 = 所辖已填县 hex 之并集（roster 父子；无单独 州/郡 几何）
 
-> 禁止 Voronoi / CHGIS 程序化自动烘焙行政边界。旧 `admin_*.json` 已清空为 retired stubs（`unused_for_rendering`，无 rings/PIP）；游戏永不加载。郡/州 = 已铺 `xian_id` 的县 hex 并集。
+> 旧 `admin_*.json` 仍为 retired stubs（`unused_for_rendering`）；游戏永不加载。不另发明 州/郡 边界。CHGIS V6 无东汉县域面层——填充用县治 Thiessen 示意邻域，再按 500² hex 中心采样（详见 fills report / `fidelity_note`）。
 
 ## 合计
 

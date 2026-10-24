@@ -12,6 +12,8 @@ var display_mode: String = "zhou"
 var _was_hex := false
 var _log: PackedStringArray = []
 var _mode_buttons: Dictionary = {} ## mode -> Button
+var _sinica_btn: Button
+var _sinica_slider: HSlider
 
 @onready var camera: CameraLod = $CameraLod
 @onready var map_view: Node2D = $HexMapView
@@ -50,7 +52,7 @@ func _ready() -> void:
 	_configure_hud_mouse_filters()
 	_set_display_mode("zhou")
 	_refresh_hud()
-	_push_log("160×%d。左键拖拽平移；短按选择。顶栏 州/郡/县/地形；Esc → 设置调「鼠标拖拽」。" % Hex.MAP_H)
+	_push_log("%d×%d。左键拖拽平移；短按选择。顶栏 州/郡/县/地形；Esc → 设置调「鼠标拖拽」。" % [Hex.MAP_W, Hex.MAP_H])
 	world.save_to_path("user://dual_scale_debug.json")
 
 
@@ -244,9 +246,49 @@ func _build_mode_buttons() -> void:
 		bar.add_child(btn)
 		_mode_buttons[mode] = btn
 		x += 52.0
+	## Sinica CCTS ad0262 raster underlay (not vector 州 fills).
+	x += 8.0
+	_sinica_btn = Button.new()
+	_sinica_btn.text = "底图"
+	_sinica_btn.tooltip_text = "Sinica CCTS ad0262 三國歷史地圖（栅格底图，非矢量界）"
+	_sinica_btn.position = Vector2(x, 10)
+	_sinica_btn.size = Vector2(48, 32)
+	_sinica_btn.toggle_mode = true
+	_sinica_btn.focus_mode = Control.FOCUS_NONE
+	_sinica_btn.disabled = not map_view.has_sinica_underlay()
+	_sinica_btn.toggled.connect(_on_sinica_toggled)
+	bar.add_child(_sinica_btn)
+	x += 52.0
+	_sinica_slider = HSlider.new()
+	_sinica_slider.min_value = 0.1
+	_sinica_slider.max_value = 1.0
+	_sinica_slider.step = 0.05
+	_sinica_slider.value = 0.55
+	_sinica_slider.position = Vector2(x, 14)
+	_sinica_slider.size = Vector2(72, 24)
+	_sinica_slider.tooltip_text = "底图不透明度"
+	_sinica_slider.focus_mode = Control.FOCUS_NONE
+	_sinica_slider.editable = false
+	_sinica_slider.value_changed.connect(_on_sinica_opacity)
+	bar.add_child(_sinica_slider)
+	x += 80.0
 	## Shift turn label right of mode buttons.
 	var turn_l: Label = hud.get_node("TopBar/TurnLabel")
 	turn_l.position.x = x + 8.0
+
+
+func _on_sinica_toggled(pressed: bool) -> void:
+	map_view.set_sinica_underlay(pressed)
+	if _sinica_slider != null:
+		_sinica_slider.editable = pressed and map_view.has_sinica_underlay()
+	if pressed:
+		_push_log("Sinica CCTS ad0262 底图开（栅格；非矢量州界）")
+	else:
+		_push_log("Sinica 底图关")
+
+
+func _on_sinica_opacity(v: float) -> void:
+	map_view.set_sinica_opacity(v)
 
 
 func _set_display_mode(mode: String) -> void:
@@ -256,8 +298,11 @@ func _set_display_mode(mode: String) -> void:
 		var btn: Button = _mode_buttons[k]
 		btn.set_pressed_no_signal(str(k) == mode)
 	_update_empty_admin_hint()
-	if mode != "terrain" and not map_view.has_xian_fills():
-		_push_log("县范围尚未铺设（州/郡 = 县 hex 并集；名单见 counties_roster）")
+	if mode == "xian":
+		var seats_n: int = CountiesRoster.seat_count()
+		_push_log("县模式：县治点 + 郡内最近邻面")
+	elif mode != "terrain" and not map_view.has_admin_fills():
+		_push_log("州/郡：无面覆盖；行政点 + 底图可对照")
 	_refresh_hud()
 
 
@@ -265,11 +310,15 @@ func _update_empty_admin_hint() -> void:
 	var hint: Label = hud.get_node_or_null("EmptyAdminHint")
 	if hint == null:
 		return
-	var show_hint: bool = display_mode != "terrain" and not map_view.has_xian_fills()
-	hint.visible = show_hint
-	if show_hint:
-		var roster_n: int = CountiesRoster.county_count()
-		hint.text = "县范围尚未铺设（名单 %d 县 · 郡/州 = 县并集）" % roster_n
+	var seats_n: int = CountiesRoster.seat_count()
+	if display_mode == "xian":
+		hint.visible = true
+		hint.text = "县治 %d · 无县域面" % seats_n
+	elif display_mode != "terrain" and not map_view.has_admin_fills():
+		hint.visible = true
+		hint.text = "州/郡治点 · 面待数字化 · 底图可对照"
+	else:
+		hint.visible = false
 
 
 func _wire_hud() -> void:
@@ -421,10 +470,15 @@ func _refresh_hud() -> void:
 	var paused := bool(world.time.get("paused", true))
 	var mode_names := {"zhou": "州", "jun": "郡", "xian": "县", "terrain": "地形"}
 	var mode_label: String = str(mode_names.get(display_mode, display_mode))
-	var empty_admin: bool = display_mode != "terrain" and not map_view.has_xian_fills()
+	var empty_admin: bool = (
+		display_mode == "xian"
+		or (display_mode != "terrain" and not map_view.has_admin_fills())
+	)
 	if empty_admin:
-		lod_l.text = "显示 %s · 未铺设 · %s" % [
+		var tag := "治所" if display_mode == "xian" else "面稀疏"
+		lod_l.text = "显示 %s · %s · %s" % [
 			mode_label,
+			tag,
 			("暂停" if paused or speed == 0 else "%dx" % speed),
 		]
 	else:
