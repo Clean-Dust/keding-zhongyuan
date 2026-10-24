@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless smoke: coast, sanguo-map 州/郡 fills, CHGIS seats (no 县 faces), tick, save/load.
+## Headless smoke: coast, admin_points, optional faces, CHGIS seats, tick, save/load.
 
 
 func _init() -> void:
@@ -49,29 +49,58 @@ func _init() -> void:
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## 县: no faces. 州/郡: sanguo-map GeoJSON PIP. 县=CHGIS seats only.
+	## Phase 1+: faces may be empty; never invent 县 faces. No sanguo-map fills.
 	if xian_n != 0:
-		push_error("expected no 县 fills (no county faces), got %d" % xian_n)
-		failed += 1
-	if zhou_n < 50000:
-		push_error("expected sanguo-map 州 fills, zhou=%d" % zhou_n)
-		failed += 1
-	if jun_n < 50000:
-		push_error("expected sanguo-map 郡 fills, jun=%d" % jun_n)
+		push_error("expected no 县 fills, got %d" % xian_n)
 		failed += 1
 	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
 		push_error("missing zhou_jun_fills.json / zhou_jun_fills.bin")
 		failed += 1
-	## Sample: 会稽 seat land → 扬州 + 会稽郡.
+	if not FileAccess.file_exists("res://data/admin_points.json"):
+		push_error("missing admin_points.json")
+		failed += 1
+	else:
+		var ap_txt := FileAccess.get_file_as_string("res://data/admin_points.json")
+		var ap_any: Variant = JSON.parse_string(ap_txt)
+		if typeof(ap_any) != TYPE_DICTIONARY:
+			push_error("admin_points.json unreadable")
+			failed += 1
+		else:
+			var ap: Dictionary = ap_any
+			var zhou_pts: Array = ap.get("zhou", [])
+			var jun_pts: Array = ap.get("jun", [])
+			var xian_pts: Array = ap.get("xian", [])
+			if zhou_pts.size() < 13:
+				push_error("admin_points 州治=%d expected 13" % zhou_pts.size())
+				failed += 1
+			if jun_pts.size() < 80:
+				push_error("admin_points 郡治=%d expected ≥80" % jun_pts.size())
+				failed += 1
+			if xian_pts.size() < 500:
+				push_error("admin_points 县治=%d expected ≥500" % xian_pts.size())
+				failed += 1
+			## 江夏郡 → 荆州
+			var jx_ok := false
+			for j_any in jun_pts:
+				if typeof(j_any) != TYPE_DICTIONARY:
+					continue
+				var j: Dictionary = j_any
+				if str(j.get("jun", "")).begins_with("江夏"):
+					jx_ok = true
+					if str(j.get("zhou", "")) != "荆州":
+						push_error("江夏郡 zhou=%s expected 荆州" % j.get("zhou", ""))
+						failed += 1
+			if not jx_ok:
+				push_error("江夏郡 missing from admin_points")
+				failed += 1
+	## Sample: 会稽 seat exists as 县治; no face paint required.
 	var kuaiji := Hex.lonlat_to_offset(120.582, 30.002)
 	var kidx := kuaiji.y * Hex.MAP_W + kuaiji.x
 	if kidx >= 0 and kidx < ws.hexes.size():
 		var kh: Dictionary = ws.hexes[kidx]
-		if str(kh.get("jun_id", "")) != "会稽郡":
-			push_error("会稽 seat hex jun_id=%s expected 会稽郡" % kh.get("jun_id", ""))
-			failed += 1
-		if str(kh.get("zhou_id", "")) != "扬州":
-			push_error("会稽 seat hex zhou_id=%s expected 扬州" % kh.get("zhou_id", ""))
+		## Faces may be empty in phase 1; if painted later, 扬州/会稽 is ok.
+		if str(kh.get("zhou_id", "")) != "" and str(kh.get("zhou_id", "")) != "扬州":
+			push_error("会稽 hex zhou_id=%s unexpected" % kh.get("zhou_id", ""))
 			failed += 1
 	var seats_n := CountiesRoster.seat_count()
 	if seats_n < 500:
@@ -272,26 +301,16 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast + sanguo-map 州/郡 fills reapplied via build_blank_grid on load.
+		## Coast reapplied on load; 县 faces must stay empty.
 		var w2 := 0
-		var z2 := 0
-		var j2 := 0
 		var x2 := 0
 		for h2 in ws2.hexes:
 			if str(h2.get("terrain", "")) == "water":
 				w2 += 1
-			else:
-				if str(h2.get("zhou_id", "")) != "":
-					z2 += 1
-				if str(h2.get("jun_id", "")) != "":
-					j2 += 1
-				if str(h2.get("xian_id", "")) != "":
-					x2 += 1
+			elif str(h2.get("xian_id", "")) != "":
+				x2 += 1
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
-			failed += 1
-		if z2 < 50000 or j2 < 50000:
-			push_error("load lost sanguo-map 州/郡 fills zhou=%d jun=%d" % [z2, j2])
 			failed += 1
 		if x2 != 0:
 			push_error("load invented xian fills=%d" % x2)

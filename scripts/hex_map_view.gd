@@ -1,7 +1,7 @@
 extends Node2D
 ## Hex-based map draw. Display mode (州/郡/县/地形) is UI-driven — not zoom.
-## 州/郡: sanguo-map GeoJSON hex-center fills (zhou_id / jun_id); unit borders between ids.
-## 县: seats only — no county faces (xian_id stays empty).
+## Phase pipeline: admin POINTS always drawn (州治/郡治/县治). Faces when baked.
+## 底图 = Sinica CCTS ad0262 raster QA (not fill source).
 
 const HEX_SIZE := 36.0
 const HEX_DRAW := HEX_SIZE * 0.96
@@ -13,9 +13,12 @@ const UNASSIGNED_GRAY := Color(0.52, 0.52, 0.50)
 const ADMIN_BORDER := Color(0.12, 0.10, 0.08, 0.85)
 const ADMIN_NAME := Color(0.10, 0.10, 0.08, 0.92)
 const HINT_COLOR := Color(0.12, 0.12, 0.10, 0.88)
-const SEAT_MARK := Color(0.15, 0.12, 0.08, 0.9)
+const MARK_ZHOU := Color(0.75, 0.15, 0.12, 0.95)
+const MARK_JUN := Color(0.12, 0.22, 0.55, 0.92)
+const MARK_XIAN := Color(0.12, 0.12, 0.10, 0.88)
 const DRAW_MAP_MARKERS := false
-const EMPTY_ADMIN_HINT := "州/郡范围未覆盖（源外面）；县界暂无"
+const EMPTY_ADMIN_HINT := "行政点模式（面待 Sinica 数字化）；底图可对照"
+const ADMIN_POINTS_PATH := "res://data/admin_points.json"
 
 ## Display modes (buttons): zhou | jun | xian | terrain
 const MODE_ZHOU := "zhou"
@@ -46,8 +49,8 @@ var _redraw_scheduled: bool = false
 var _admin_labels: Array = []
 ## True when current mode has something to paint (州/郡 polygon fills; never 县).
 var _has_admin_fills: bool = false
-## Optional seat marks from data/county_seats.json (pixel positions).
-var _seat_marks: Array = []
+## Admin points: {level, name, pos} from data/admin_points.json (fallback county_seats).
+var _admin_points: Array = []
 ## Sinica CCTS ad0262 raster underlay (offline bake — not vector admin).
 var _sinica_tex: Texture2D
 var _sinica_enabled: bool = false
@@ -65,7 +68,7 @@ func setup(ws: WorldState) -> void:
 	_rebuild_color_caches()
 	_rebuild_highlight_set()
 	_rebuild_admin_labels()
-	_rebuild_seat_marks()
+	_rebuild_admin_points()
 	if not world.changed.is_connected(_on_world_changed):
 		world.changed.connect(_on_world_changed)
 	_cam = get_viewport().get_camera_2d()
@@ -121,7 +124,7 @@ func set_display_mode(mode: String) -> void:
 	display_mode = mode
 	_rebuild_color_caches()
 	_rebuild_admin_labels()
-	_rebuild_seat_marks()
+	_rebuild_admin_points()
 	_rebuild_pref_labels()
 	queue_redraw()
 
@@ -152,7 +155,7 @@ func _on_world_changed() -> void:
 	_rebuild_color_caches()
 	_rebuild_highlight_set()
 	_rebuild_admin_labels()
-	_rebuild_seat_marks()
+	_rebuild_admin_points()
 	_rebuild_pref_labels()
 	queue_redraw()
 
@@ -336,13 +339,39 @@ func _rebuild_admin_labels() -> void:
 		})
 
 
-func _rebuild_seat_marks() -> void:
-	_seat_marks.clear()
-	## Seats are markers only — never paint xian_id / 郡/州 fills from seats.
-	for row_any in CountiesRoster.load_seats():
-		if typeof(row_any) != TYPE_DICTIONARY:
-			continue
+func _rebuild_admin_points() -> void:
+	_admin_points.clear()
+	var rows: Array = []
+	if FileAccess.file_exists(ADMIN_POINTS_PATH):
+		var txt := FileAccess.get_file_as_string(ADMIN_POINTS_PATH)
+		var parsed: Variant = JSON.parse_string(txt)
+		if typeof(parsed) == TYPE_DICTIONARY:
+			var root: Dictionary = parsed
+			for key in ["zhou", "jun", "xian"]:
+				var arr: Variant = root.get(key, [])
+				if typeof(arr) == TYPE_ARRAY:
+					for row_any in arr:
+						if typeof(row_any) == TYPE_DICTIONARY:
+							rows.append(row_any)
+	if rows.is_empty():
+		## Fallback: county seats only as 县.
+		for row_any in CountiesRoster.load_seats():
+			if typeof(row_any) == TYPE_DICTIONARY:
+				var r: Dictionary = row_any
+				r["level"] = "xian"
+				rows.append(r)
+	for row_any in rows:
 		var row: Dictionary = row_any
+		var level := str(row.get("level", "xian"))
+		## Mode filter: 州 shows 州治(+郡治 faint); 郡 shows 郡治; 县 shows 县治.
+		if display_mode == MODE_ZHOU and level == "xian":
+			continue
+		if display_mode == MODE_JUN and level == "xian":
+			continue
+		if display_mode == MODE_XIAN and level != "xian":
+			continue
+		if display_mode == MODE_TERRAIN:
+			continue
 		var px: Vector2
 		if row.has("col") and row.has("row"):
 			var ax := Hex.offset_to_axial(int(row.col), int(row.row))
@@ -352,9 +381,9 @@ func _rebuild_seat_marks() -> void:
 		else:
 			continue
 		var nm := str(row.get("name", ""))
-		if nm == "" and str(row.get("xian_id", "")) != "":
-			nm = CountiesRoster.name_of(str(row.xian_id))
-		_seat_marks.append({"pos": px, "name": nm})
+		if nm == "" and level == "zhou":
+			nm = str(row.get("zhou", ""))
+		_admin_points.append({"pos": px, "name": nm, "level": level})
 
 
 func _rebuild_pref_labels() -> void:
@@ -439,7 +468,7 @@ func _draw() -> void:
 	_draw_sinica_underlay()
 	_draw_hex_layer(vis)
 	_draw_admin_names(vis)
-	_draw_seat_marks(vis)
+	_draw_admin_points(vis)
 	_draw_empty_admin_hint(vis)
 	if DRAW_MAP_MARKERS and world.path_preview.size() >= 2:
 		for i in range(world.path_preview.size() - 1):
@@ -481,24 +510,55 @@ func _draw_empty_admin_hint(vis: Rect2) -> void:
 	)
 
 
-func _draw_seat_marks(vis: Rect2) -> void:
-	## 县 mode: markers + labels. 州/郡: markers only (no territory from seats).
-	if display_mode == MODE_TERRAIN or _seat_marks.is_empty():
+func _draw_admin_points(vis: Rect2) -> void:
+	if display_mode == MODE_TERRAIN or _admin_points.is_empty():
 		return
-	var show_labels := display_mode == MODE_XIAN
-	var font_size := _world_font_px(13.0)
-	var label_budget := 160
+	var show_labels := true
+	var font_size := _world_font_px(12.0)
+	var label_budget := 200 if display_mode == MODE_XIAN else 80
 	var named := 0
-	var mark_r := HEX_SIZE * (0.14 if display_mode == MODE_XIAN else 0.10)
-	for seat in _seat_marks:
-		var pos: Vector2 = seat.pos
+	for pt in _admin_points:
+		var pos: Vector2 = pt.pos
 		if not vis.has_point(pos):
 			continue
-		draw_circle(pos, mark_r, SEAT_MARK)
+		var level: String = str(pt.get("level", "xian"))
+		var col: Color = MARK_XIAN
+		var r := HEX_SIZE * 0.10
+		if level == "zhou":
+			col = MARK_ZHOU
+			r = HEX_SIZE * 0.22
+		elif level == "jun":
+			col = MARK_JUN
+			r = HEX_SIZE * 0.15
+		## Distinct shapes: 州 = square, 郡 = diamond, 县 = circle.
+		if level == "zhou":
+			var hs := r * 0.85
+			draw_colored_polygon(
+				PackedVector2Array([
+					pos + Vector2(-hs, -hs), pos + Vector2(hs, -hs),
+					pos + Vector2(hs, hs), pos + Vector2(-hs, hs),
+				]),
+				col
+			)
+		elif level == "jun":
+			draw_colored_polygon(
+				PackedVector2Array([
+					pos + Vector2(0, -r), pos + Vector2(r, 0),
+					pos + Vector2(0, r), pos + Vector2(-r, 0),
+				]),
+				col
+			)
+		else:
+			draw_circle(pos, r, col)
 		if not show_labels:
 			continue
-		var nm: String = str(seat.get("name", ""))
+		var nm: String = str(pt.get("name", ""))
 		if nm == "" or named >= label_budget:
+			continue
+		## In 州 mode label 州治; in 郡 mode label 郡; in 县 mode label 县.
+		if display_mode == MODE_ZHOU and level != "zhou":
+			continue
+		if display_mode == MODE_JUN and level != "jun":
 			continue
 		named += 1
 		draw_string(

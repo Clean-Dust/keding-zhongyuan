@@ -300,9 +300,9 @@ func _set_display_mode(mode: String) -> void:
 	_update_empty_admin_hint()
 	if mode == "xian":
 		var seats_n: int = CountiesRoster.seat_count()
-		_push_log("县模式：治所 %d（无县域面；仅 CHGIS 治所点）" % seats_n)
+		_push_log("县模式：县治点 %d（无县域面）" % seats_n)
 	elif mode != "terrain" and not map_view.has_admin_fills():
-		_push_log("州/郡：本视窗无 sanguo-map 面覆盖")
+		_push_log("州/郡：行政点模式（面待 Sinica）；底图可对照")
 	_refresh_hud()
 
 
@@ -313,10 +313,10 @@ func _update_empty_admin_hint() -> void:
 	var seats_n: int = CountiesRoster.seat_count()
 	if display_mode == "xian":
 		hint.visible = true
-		hint.text = "县治所 %d · 无县域面" % seats_n
+		hint.text = "县治 %d · 无县域面" % seats_n
 	elif display_mode != "terrain" and not map_view.has_admin_fills():
 		hint.visible = true
-		hint.text = "州/郡面未覆盖本区（sanguo-map 外面）"
+		hint.text = "州/郡治点 · 面待数字化 · 底图可对照"
 	else:
 		hint.visible = false
 
