@@ -10,7 +10,7 @@
   },
   "zhou": {
     "source": "Tan-262 purple 州 outline polygons",
-    "method": "sheet purple-mask interior fill on beige land; no expand/sea",
+    "method": "purple polygons; 益州 west=inland purple; 豫/司/兖 solid fill incl. ink/river hexes inside outline; no sea",
     "units": 14
   },
   "jun": {
@@ -24,7 +24,7 @@
     "units": 916
   },
   "citation": "Tan Qixiang 中国历史地图集 三国 分幅 (tan-262). Sinica fallback labels only where sheet blank.",
-  "fidelity_note": "Purple outline polygons; no seat-flood; no sheet JPEG texture.",
+  "fidelity_note": "Purple outline polygons; 益州 west follows sheet purple; interior holes filled inside outlines; no seat-flood; no JPEG texture.",
   "zhou_table": [
     "",
     "交州",
@@ -183,9 +183,9 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 143831,
-    "zhou_filled": 86413,
-    "jun_filled": 86413,
-    "xian_filled": 84029,
+    "zhou_filled": 82941,
+    "jun_filled": 82941,
+    "xian_filled": 81426,
     "zhou_units": 14,
     "jun_units": 134
   },

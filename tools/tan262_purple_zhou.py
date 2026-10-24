@@ -141,15 +141,105 @@ def largest_connected(mask: np.ndarray) -> np.ndarray:
     return lab == best
 
 
+def yizhou_west_purple_cuts(wall: np.ndarray) -> np.ndarray:
+    """Per-row x cut for 益州 west edge: follow inland purple, not sheet neatline.
+
+    Traces the continuous western purple wall (sheet-06/07), skipping left-margin
+    neatline ink. Returns int32 cut[y] = first interior column to keep.
+    """
+    h, w = wall.shape
+    margin = max(2, int(0.035 * w))
+    right = int(0.62 * w)
+    # Anchor on a strong purple column in the western half (outer 州 wall, not neatline).
+    dens = wall[:, margin:right].sum(0).astype(np.float64)
+    if dens.max() <= 0:
+        return np.zeros(h, dtype=np.int32)
+    thr = 0.40 * float(dens.max())
+    strong = [i for i in range(len(dens)) if dens[i] >= thr]
+    if not strong:
+        strong = [int(np.argmax(dens))]
+    # Westernmost strong peak — outer wall; tracing walks along it north/south.
+    anchor_rel = min(strong)
+    prev = margin + anchor_rel
+    cut = np.zeros(h, dtype=np.int32)
+    for y in range(h):
+        xs = np.where(wall[y] > 0)[0]
+        xs = xs[(xs > margin) & (xs < right)]
+        if len(xs) == 0:
+            cut[y] = prev
+            continue
+        # Cluster into runs (gap ≤ 3 px)
+        runs: list[tuple[int, int]] = []
+        start = prevx = int(xs[0])
+        for x in xs[1:]:
+            x = int(x)
+            if x - prevx <= 3:
+                prevx = x
+            else:
+                runs.append((start, prevx))
+                start = prevx = x
+        runs.append((start, prevx))
+        # Run whose center is closest to the tracked wall
+        run = min(runs, key=lambda r: abs(0.5 * (r[0] + r[1]) - prev))
+        x = run[0]
+        # Prefer a slightly western neighbor run if it is part of the same wall bundle
+        for r in runs:
+            if r[1] < x and x - r[1] <= 45 and (r[1] - r[0]) >= 1:
+                if abs(0.5 * (r[0] + r[1]) - prev) < 75:
+                    x = r[0]
+        cut[y] = int(x)
+        prev = int(0.85 * prev + 0.15 * x)
+    # Median smooth to kill single-row spikes (keeps meander, drops neatline flickers)
+    k = 31
+    pad = np.pad(cut.astype(np.float64), (k // 2, k // 2), mode="edge")
+    smooth = np.array([np.median(pad[i : i + k]) for i in range(h)])
+    for y in range(h):
+        xs = np.where(wall[y] > 0)[0]
+        xs = xs[(xs > margin) & (xs < right)]
+        if len(xs) == 0:
+            cut[y] = int(smooth[y])
+            continue
+        lo, hi = smooth[y] - 40, smooth[y] + 70
+        near = xs[(xs >= lo) & (xs <= hi)]
+        cut[y] = int(near.min()) if len(near) else int(min(xs, key=lambda x: abs(x - smooth[y])))
+    return cut
+
+
+def clip_mask_west_of_purple(mask: np.ndarray, wall: np.ndarray) -> tuple[np.ndarray, int]:
+    """Zero mask pixels west of the traced inland purple wall. Returns (mask, n_removed)."""
+    if mask is None or not mask.any():
+        return mask, 0
+    cut = yizhou_west_purple_cuts(wall)
+    out = mask.copy()
+    removed = 0
+    h, w = out.shape
+    for y in range(h):
+        xcut = int(cut[y])
+        if xcut <= 0:
+            continue
+        before = int(out[y, :xcut].sum())
+        if before:
+            out[y, :xcut] = 0
+            removed += before
+    out = largest_connected(out).astype(np.uint8)
+    return out, removed
+
+
 def _fill_holes_binary(mask: np.ndarray) -> np.ndarray:
-    """Fill interior holes of a binary mask (uint8 0/1)."""
+    """Fill interior holes of a binary mask (uint8 0/1).
+
+    Pads a 1-px empty border so flood-fill always starts in true exterior — even
+    when the mask touches the image corner/edge (otherwise every empty cell is
+    misclassified as a hole and the 州 swallows the map).
+    """
     m = (mask > 0).astype(np.uint8)
     if not m.any():
         return m
-    inv = (m == 0).astype(np.uint8) * 255
+    padded = np.pad(m, 1, mode="constant", constant_values=0)
+    inv = (padded == 0).astype(np.uint8) * 255
     ff = inv.copy()
-    cv2.floodFill(ff, np.zeros((m.shape[0] + 2, m.shape[1] + 2), np.uint8), (0, 0), 128)
-    holes = ff == 255
+    cv2.floodFill(ff, np.zeros((padded.shape[0] + 2, padded.shape[1] + 2), np.uint8), (0, 0), 128)
+    holes = ff[1:-1, 1:-1] == 255
     return (m | holes).astype(np.uint8)
 
 
@@ -288,6 +378,11 @@ def sheet_zhou_polygons(
         union = cv2.morphologyEx(union, cv2.MORPH_CLOSE, k, iterations=2)
         union = largest_connected(union).astype(np.uint8)
         union = cv2.morphologyEx(union, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8), iterations=1)
+        # 益州 on sheets 06/07: west edge must follow inland purple, not neatline
+        if zname == "益州" and path.name in ("06-yizhou-north.jpg", "07-yizhou-south.jpg"):
+            union, ncut = clip_mask_west_of_purple(union, wall)
+            if ncut:
+                print(f"    {path.name} 益州 west-purple clip -{ncut} px", flush=True)
         cnts, _ = cv2.findContours(union, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not cnts:
             continue
@@ -476,25 +571,25 @@ def main() -> int:
     hex_zhou = keep_largest_per_id(hex_zhou, land_ok=land_ok, close_px=8)
     hex_zhou[land_ok == 0] = 0
     hex_zhou = keep_largest_per_id(hex_zhou, land_ok=land_ok, close_px=0)
-    # Solid-fill interior holes inside each 州 outer contour (beige land only).
+    # Solid-fill only true interior holes (beige land; never steal foreign 州 / no exterior expand).
     for zid in range(1, n_zhou):
         m = (hex_zhou == zid).astype(np.uint8)
         if not m.any():
             continue
-        cnts, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not cnts:
-            continue
-        poly = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
-        cv2.fillPoly(poly, [max(cnts, key=cv2.contourArea)], 1)
-        hole = (poly > 0) & (land_ok > 0) & ((hex_zhou == 0) | (hex_zhou == zid))
-        # do not steal foreign 州 cells
-        hole = hole & ((hex_zhou == 0) | (hex_zhou == zid))
-        # skip empty cells that touch a foreign 州 (edge, not interior)
         foreign = (hex_zhou != 0) & (hex_zhou != zid)
-        near_f = cv2.dilate(foreign.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=1) > 0
-        empty = hole & (hex_zhou == 0) & ~near_f
-        hex_zhou[empty] = zid
-        hex_zhou[hole & (hex_zhou == zid)] = zid
+        holes = _fill_holes_binary(m)
+        # Cap hole fill: only accept hole CCs much smaller than the 州 itself
+        n_h, lab_h, st_h, _ = cv2.connectedComponentsWithStats(
+            ((holes > 0) & (m == 0)).astype(np.uint8), connectivity=4
+        )
+        core = int(m.sum())
+        for hi in range(1, n_h):
+            area = int(st_h[hi, cv2.CC_STAT_AREA])
+            if area > max(80, core // 5):
+                continue
+            sel = lab_h == hi
+            sel = sel & (land_ok > 0) & (hex_zhou == 0) & (~foreign)
+            hex_zhou[sel] = zid
 
     mxj = jun_votes.max(axis=0)
     hex_jun = np.where(mxj > 0, jun_votes.argmax(axis=0), 0).astype(np.uint16)
