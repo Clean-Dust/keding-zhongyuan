@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Extract 州 faces from purple boundary ink on Tan-262 分幅 sheets.
+"""Build continuous solid 州 hex fills from Tan-262 purple boundaries.
 
-Detects purple/magenta boundary pixels, seals them, flood-fills land pockets,
-labels each pocket by nearest Tan 州 seat label, then splatters onto the
-common 500×500 lon/lat hex grid used by zhou_jun_fills.bin.
+Each sheet is georeferenced by its printed degree grid. Purple ink becomes
+barriers in a shared 500×500 lon/lat hex grid. 州 seats flood through coast
+land until purple barriers — one continuous map, no scan splat / white holes.
+
+Does not copy JPEG scans into the git repo.
 """
 from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter, defaultdict
+from collections import Counter, deque
 from pathlib import Path
 
 import numpy as np
@@ -20,28 +22,22 @@ LON_MIN, LON_MAX = 94.662, 130.0
 LAT_MIN, LAT_MAX = 15.55, 42.8
 MAP_W = MAP_H = 500
 
-
-def pix_to_lonlat(g: dict, x: float, y: float) -> tuple[float, float]:
-    return float(g["lon_a"] * x + g["lon_b"]), float(g["lat_c"] * y + g["lat_d"])
-
-
-def lonlat_to_hex(lon: float, lat: float) -> tuple[int, int]:
-    col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W)
-    row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H)
-    return col, row
-
-
-def purple_mask(im: np.ndarray) -> np.ndarray:
-    """Purple/magenta 州 boundaries on Tan plates (not brown 郡 lines)."""
-    r = im[:, :, 0].astype(np.float32)
-    g = im[:, :, 1].astype(np.float32)
-    b = im[:, :, 2].astype(np.float32)
-    # purple: R and B high relative to G; not near-black, not paper
-    purple = (r > 90) & (b > 90) & (g < r * 0.85) & (g < b * 0.9) & ((r + b) > 1.6 * g + 40)
-    # also catch darker violet lines
-    violet = (r > 70) & (b > 100) & (b > g + 25) & (r > g + 10) & (r + g + b < 520)
-    return purple | violet
-
+CANON = {
+    "交州",
+    "扬州",
+    "荆州",
+    "益州",
+    "司州",
+    "兖州",
+    "豫州",
+    "青州",
+    "徐州",
+    "幽州",
+    "凉州",
+    "雍州",
+    "冀州",
+    "并州",
+}
 
 SHEET_PRIMARY = {
     "03-jiaozhou.jpg": ("交州",),
@@ -50,7 +46,7 @@ SHEET_PRIMARY = {
     "06-yizhou-north.jpg": ("益州", "雍州"),
     "07-yizhou-south.jpg": ("益州",),
     "09-sizhou.jpg": ("司州",),
-    "10-yan-yu-yang.jpg": ("兖州", "豫州", "扬州"),
+    "10-yan-yu-yang.jpg": ("兖州", "豫州"),
     "11-qing-xu.jpg": ("青州", "徐州"),
     "12-youzhou.jpg": ("幽州",),
     "13-liangzhou.jpg": ("凉州",),
@@ -59,83 +55,150 @@ SHEET_PRIMARY = {
     "16-ji-bing.jpg": ("冀州", "并州"),
 }
 
+SKIP = {"01-overview.jpg", "02-xiyu.jpg", "08-xianbei.jpg"}
 
-def sheet_zhou_raster(
-    path: Path,
-    g: dict,
-    zhou_seeds: list[tuple[str, float, float]],
-    scale: float = 0.5,
-) -> dict[str, np.ndarray]:
-    """Return dict zhou_name -> boolean mask on sheet (downscaled)."""
+
+def lonlat_to_hex(lon: float, lat: float) -> tuple[int, int]:
+    col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W)
+    row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H)
+    return col, row
+
+
+def offset_to_lonlat(col: int, row: int) -> tuple[float, float]:
+    lon = LON_MIN + (col + 0.5) / MAP_W * (LON_MAX - LON_MIN)
+    lat = LAT_MAX - (row + 0.5) / MAP_H * (LAT_MAX - LAT_MIN)
+    return lon, lat
+
+
+def purple_mask(im: np.ndarray) -> np.ndarray:
+    r = im[:, :, 0].astype(np.float32)
+    g = im[:, :, 1].astype(np.float32)
+    b = im[:, :, 2].astype(np.float32)
+    purple = (r > 90) & (b > 90) & (g < r * 0.85) & (g < b * 0.9) & ((r + b) > 1.6 * g + 40)
+    violet = (r > 70) & (b > 100) & (b > g + 25) & (r > g + 10) & (r + g + b < 520)
+    return purple | violet
+
+
+def mark_purple_barriers(path: Path, g: dict, barrier: np.ndarray, scale: float = 0.35) -> int:
+    """Project sheet purple ink onto hex barrier grid. Returns #hexes marked."""
     im_full = Image.open(path).convert("RGB")
-    if scale != 1.0:
-        im = im_full.resize(
-            (int(im_full.width * scale), int(im_full.height * scale)),
-            Image.Resampling.BILINEAR,
-        )
-    else:
-        im = im_full
+    im = im_full.resize(
+        (max(1, int(im_full.width * scale)), max(1, int(im_full.height * scale))),
+        Image.Resampling.BILINEAR,
+    )
     arr = np.asarray(im)
-    h, w, _ = arr.shape
     pur = purple_mask(arr)
-    wall = ndimage.binary_dilation(pur, iterations=2)
-    wall = ndimage.binary_closing(wall, iterations=2)
-    # land ≈ not bright paper / not deep sea-blue
-    lum = arr.mean(axis=2)
-    sea = (arr[:, :, 2] > arr[:, :, 0] + 15) & (arr[:, :, 2] > arr[:, :, 1] + 10) & (lum < 200)
-    paper = lum > 235
-    land = (~wall) & (~sea) & (~paper)
-    labeled, n = ndimage.label(land)
-    primary = SHEET_PRIMARY.get(path.name, ())
-    # map each component to nearest 州 seed (in sheet pixels)
-    seed_xy: list[tuple[str, float, float]] = []
-    for name, lon, lat in zhou_seeds:
-        # Prefer seeds for this sheet's primary 州 (and any seed on-sheet)
-        x = (lon - g["lon_b"]) / g["lon_a"]
-        y = (lat - g["lat_d"]) / g["lat_c"]
-        x *= scale
-        y *= scale
-        if 0 <= x < w and 0 <= y < h:
-            seed_xy.append((name, x, y))
-    # If a primary 州 has no on-sheet seed, plant one at sheet center
-    have = {n for n, _, _ in seed_xy}
-    for pname in primary:
-        if pname not in have:
-            seed_xy.append((pname, w / 2.0, h / 2.0))
-    comp_zhou: dict[int, str] = {}
+    # thicken so hex barrier is continuous
+    pur = ndimage.binary_dilation(pur, iterations=2)
+    ys, xs = np.where(pur)
+    n = 0
+    # subsample for speed but keep density high enough for continuity
+    step = 1
+    for y, x in zip(ys[::step], xs[::step]):
+        # map downscaled pixel → full sheet → lon/lat
+        fx = x / scale
+        fy = y / scale
+        lon = g["lon_a"] * fx + g["lon_b"]
+        lat = g["lat_c"] * fy + g["lat_d"]
+        if not (LON_MIN <= lon <= LON_MAX and LAT_MIN <= lat <= LAT_MAX):
+            continue
+        col, row = lonlat_to_hex(lon, lat)
+        if 0 <= col < MAP_W and 0 <= row < MAP_H:
+            if not barrier[row, col]:
+                n += 1
+            barrier[row, col] = True
+            # also mark 4-neighbors so thin lines seal hex gaps
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nc, nr = col + dx, row + dy
+                if 0 <= nc < MAP_W and 0 <= nr < MAP_H:
+                    barrier[nr, nc] = True
+    return n
+
+
+def flood_zhou(
+    coast: np.ndarray,
+    barrier: np.ndarray,
+    seeds: list[tuple[int, int, int]],
+) -> np.ndarray:
+    """Flood 州 ids through coast & ~barrier from seat hexes."""
+    out = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
+    dist = np.full((MAP_H, MAP_W), 10**9, dtype=np.int32)
+    q: deque[tuple[int, int, int, int]] = deque()
+    for col, row, zid in seeds:
+        if not (0 <= col < MAP_W and 0 <= row < MAP_H):
+            continue
+        # nudge off barrier / off-coast onto nearby land
+        if coast[row, col] == 0 or barrier[row, col]:
+            found = False
+            for rad in range(1, 20):
+                for dy in range(-rad, rad + 1):
+                    for dx in range(-rad, rad + 1):
+                        nc, nr = col + dx, row + dy
+                        if (
+                            0 <= nc < MAP_W
+                            and 0 <= nr < MAP_H
+                            and coast[nr, nc]
+                            and not barrier[nr, nc]
+                        ):
+                            col, row = nc, nr
+                            found = True
+                            break
+                    if found:
+                        break
+                if found:
+                    break
+            if not found:
+                continue
+        out[row, col] = zid
+        dist[row, col] = 0
+        q.append((col, row, zid, 0))
+
+    while q:
+        col, row, zid, d = q.popleft()
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nc, nr = col + dx, row + dy
+            if not (0 <= nc < MAP_W and 0 <= nr < MAP_H):
+                continue
+            if coast[nr, nc] == 0 or barrier[nr, nc]:
+                continue
+            nd = d + 1
+            if nd >= dist[nr, nc]:
+                continue
+            # first-arrival owns the cell (nearest seat in hex steps)
+            out[nr, nc] = zid
+            dist[nr, nc] = nd
+            q.append((nc, nr, zid, nd))
+    return out
+
+
+def fill_interior_holes(zhou: np.ndarray, coast: np.ndarray, barrier: np.ndarray) -> np.ndarray:
+    """Fill empty coast pockets fully enclosed by a single 州 (no white holes)."""
+    out = zhou.copy()
+    empty = (out == 0) & (coast > 0) & (~barrier)
+    labeled, n = ndimage.label(empty)
     for cid in range(1, n + 1):
         ys, xs = np.where(labeled == cid)
-        if len(ys) < 80:
+        if len(ys) == 0 or len(ys) > 8000:
             continue
-        cy, cx = float(ys.mean()), float(xs.mean())
-        best, bestd = "", 1e18
-        for name, sx, sy in seed_xy:
-            d = (cx - sx) ** 2 + (cy - sy) ** 2
-            # Strong bias: primary 州 of this sheet win ties / near ties
-            if primary and name in primary:
-                d *= 0.15
-            if d < bestd:
-                bestd, best = d, name
-        if best:
-            comp_zhou[cid] = best
-    masks: dict[str, np.ndarray] = defaultdict(lambda: np.zeros((h, w), dtype=bool))
-    for cid, name in comp_zhou.items():
-        masks[name][labeled == cid] = True
-    return {k: v for k, v in masks.items()}
-
-
-def splat_to_hex(masks: dict[str, np.ndarray], g: dict, scale: float, votes: dict[str, np.ndarray]):
-    for name, mask in masks.items():
-        ys, xs = np.where(mask)
-        # subsample for speed
-        for y, x in zip(ys[::2], xs[::2]):
-            lon, lat = pix_to_lonlat(g, x / scale, y / scale)
-            if not (LON_MIN <= lon <= LON_MAX and LAT_MIN <= lat <= LAT_MAX):
-                continue
-            col, row = lonlat_to_hex(lon, lat)
-            if 0 <= col < MAP_W and 0 <= row < MAP_H:
-                # encode name via side channel — caller uses index
-                votes[name][row, col] += 1
+        # neighbors of the pocket
+        neigh: set[int] = set()
+        touches_map_edge = False
+        for y, x in zip(ys, xs):
+            if y == 0 or x == 0 or y == MAP_H - 1 or x == MAP_W - 1:
+                touches_map_edge = True
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = y + dy, x + dx
+                if not (0 <= nx < MAP_W and 0 <= ny < MAP_H):
+                    touches_map_edge = True
+                    continue
+                v = int(out[ny, nx])
+                if v:
+                    neigh.add(v)
+        if touches_map_edge:
+            continue
+        if len(neigh) == 1:
+            out[labeled == cid] = next(iter(neigh))
+    return out
 
 
 def main() -> int:
@@ -146,109 +209,125 @@ def main() -> int:
         default=Path("/cursor/stores/bc-98f6facd-822a-4e6f-badd-6fc0a5aa5ecf/media/tan-262"),
     )
     ap.add_argument("--georef", type=Path, default=Path("/tmp/tan262/georef/all_georef.json"))
-    ap.add_argument("--labels", type=Path, default=Path("/tmp/tan262/labels_all.json"))
-    ap.add_argument("--out-hex", type=Path, default=Path("/tmp/tan262/zhou_hex_votes.json"))
-    ap.add_argument("--scale", type=float, default=0.45)
-    # Skip overview / xianbei / non-州 sheets for face build
-    ap.add_argument(
-        "--skip",
-        type=str,
-        default="01-overview.jpg,02-xiyu.jpg,08-xianbei.jpg",
-    )
+    ap.add_argument("--points", type=Path, default=Path("data/admin_points.json"))
+    ap.add_argument("--coast", type=Path, default=Path("data/coast_mask.bin"))
+    ap.add_argument("--out-bin", type=Path, default=Path("/tmp/tan262/zhou_hex_votes.bin"))
+    ap.add_argument("--out-meta", type=Path, default=Path("/tmp/tan262/zhou_hex_votes.json"))
+    ap.add_argument("--scale", type=float, default=0.4)
     args = ap.parse_args()
 
     georef = json.loads(args.georef.read_text())
-    labels = json.loads(args.labels.read_text())["labels"]
-    CANON = {
-        "交州",
-        "扬州",
-        "荆州",
-        "益州",
-        "司州",
-        "兖州",
-        "豫州",
-        "青州",
-        "徐州",
-        "幽州",
-        "凉州",
-        "雍州",
-        "冀州",
-        "并州",
-    }
-    ALIAS = {
-        "司隶": "司州",
-        "蜀郡益州": "益州",
-        "燕国幽州": "幽州",
-        "扶柳冀州": "冀州",
-        "南郡荆州": "荆州",
-        "湖北荆州": "荆州",
-        "丹阳郡扬州": "扬州",
-        "下邳郡徐州": "徐州",
-        "齐国州": "青州",
-    }
-    zhou_seeds = []
-    for l in labels:
-        if l["kind"] != "zhou" or l["conf"] < 0.7:
-            continue
-        raw = l["text"]
-        name = ALIAS.get(raw, raw)
-        # glued …州 → last canon 州
-        for c in CANON:
-            if raw.endswith(c) or c in raw:
-                name = c
-                break
-        if name == "司隶":
-            name = "司州"
-        if name in CANON:
-            zhou_seeds.append((name, l["lon"], l["lat"]))
-    print(f"州 seeds from labels: {len(zhou_seeds)} canon-only", flush=True)
+    pts = json.loads(args.points.read_text())
+    coast = np.frombuffer(args.coast.read_bytes(), dtype=np.uint8).reshape(MAP_H, MAP_W)
 
-    skip = {s.strip() for s in args.skip.split(",") if s.strip()}
-    votes: dict[str, np.ndarray] = defaultdict(lambda: np.zeros((MAP_H, MAP_W), dtype=np.uint16))
-
+    barrier = np.zeros((MAP_H, MAP_W), dtype=bool)
     for path in sorted(args.sheets.glob("*.jpg")):
-        if path.name in skip:
+        if path.name in SKIP:
             continue
         g = georef.get(path.name)
         if not g or not g.get("ok"):
             print(f"skip {path.name}: no georef", flush=True)
             continue
-        print(f"purple {path.name}", flush=True)
-        masks = sheet_zhou_raster(path, g, zhou_seeds, scale=args.scale)
-        print(f"  pockets: { {k: int(v.sum()) for k,v in masks.items()} }", flush=True)
-        splat_to_hex(masks, g, args.scale, votes)
+        n = mark_purple_barriers(path, g, barrier, scale=args.scale)
+        print(f"barrier {path.name}: +{n} hex (total {int(barrier.sum())})", flush=True)
 
-    # winner-take-all hex
-    names = sorted(votes.keys())
-    hex_zhou = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
-    name_to_id = {n: i + 1 for i, n in enumerate(names)}
-    id_to_name = {i: n for n, i in name_to_id.items()}
-    stack = np.stack([votes[n] for n in names], axis=0) if names else np.zeros((0, MAP_H, MAP_W))
-    if len(names):
-        best = stack.argmax(axis=0)
-        mx = stack.max(axis=0)
-        hex_zhou = np.where(mx > 0, best + 1, 0).astype(np.uint8)
+    # Soften: barrier hexes that are seats get cleared so flood can start
+    zhou_names = [""] + [z["zhou"] for z in pts["zhou"] if z["zhou"] in CANON]
+    zhou_index = {n: i for i, n in enumerate(zhou_names) if n}
+    seeds: list[tuple[int, int, int]] = []
+    for z in pts["zhou"]:
+        zid = zhou_index.get(z["zhou"])
+        if not zid:
+            continue
+        col, row = lonlat_to_hex(z["lon"], z["lat"])
+        seeds.append((col, row, zid))
+        if 0 <= col < MAP_W and 0 <= row < MAP_H:
+            barrier[row, col] = False
+    # also clear around 郡治 of each 州 (extra seeds for disconnected pockets)
+    for j in pts["jun"]:
+        zid = zhou_index.get(j.get("zhou", ""))
+        if not zid:
+            continue
+        col, row = lonlat_to_hex(j["lon"], j["lat"])
+        seeds.append((col, row, zid))
+        if 0 <= col < MAP_W and 0 <= row < MAP_H:
+            barrier[row, col] = False
 
-    counts = Counter(id_to_name[int(i)] for i in hex_zhou.ravel() if i)
-    payload = {
-        "zhou_names": [""] + names,
-        "counts": dict(counts),
-        "n_filled": int((hex_zhou > 0).sum()),
-        "hex": hex_zhou.tolist(),  # heavy but ok for /tmp
-    }
-    # save compact bin + meta instead of giant json
-    bin_path = args.out_hex.with_suffix(".bin")
-    bin_path.write_bytes(hex_zhou.astype(np.uint8).tobytes())
+    print(f"seeds={len(seeds)} barrier_hex={int(barrier.sum())}", flush=True)
+    zhou = flood_zhou(coast, barrier, seeds)
+    print(f"after flood filled={int((zhou > 0).sum())}", flush=True)
+    zhou = fill_interior_holes(zhou, coast, barrier)
+    print(f"after hole-fill filled={int((zhou > 0).sum())}", flush=True)
+
+    # Second pass: empty coast near a 州 seat-ball, still blocked by barrier
+    # (covers thin purple-miss regions without crossing purple)
+    SEAT_R2 = 2.4**2
+    seats_by_z: dict[int, list[tuple[float, float]]] = {i: [] for i in zhou_index.values()}
+    for z in pts["zhou"]:
+        zid = zhou_index.get(z["zhou"])
+        if zid:
+            seats_by_z[zid].append((z["lon"], z["lat"]))
+    for j in pts["jun"]:
+        zid = zhou_index.get(j.get("zhou", ""))
+        if zid:
+            seats_by_z[zid].append((j["lon"], j["lat"]))
+    n_extra = 0
+    for row in range(MAP_H):
+        for col in range(MAP_W):
+            if coast[row, col] == 0 or barrier[row, col] or zhou[row, col] != 0:
+                continue
+            lon, lat = offset_to_lonlat(col, row)
+            best_z, best_d = 0, SEAT_R2
+            for zid, seats in seats_by_z.items():
+                for sl, st in seats:
+                    d = (lon - sl) ** 2 + (lat - st) ** 2
+                    if d < best_d:
+                        best_d, best_z = d, zid
+            if best_z:
+                zhou[row, col] = best_z
+                n_extra += 1
+    print(f"seat-ball extra={n_extra} filled={int((zhou > 0).sum())}", flush=True)
+    zhou = fill_interior_holes(zhou, coast, barrier)
+
+    # Absorb barrier/empty coast into neighboring 州 so purple lines don't leave
+    # white corridors — solid continuous fills.
+    for rnd in range(50):
+        ys, xs = np.where((zhou == 0) & (coast > 0))
+        if len(ys) == 0:
+            break
+        updates: list[tuple[int, int, int]] = []
+        for y, x in zip(ys, xs):
+            votes: Counter[int] = Counter()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= nx < MAP_W and 0 <= ny < MAP_H and zhou[ny, nx] > 0:
+                    votes[int(zhou[ny, nx])] += 1
+            if votes:
+                updates.append((y, x, votes.most_common(1)[0][0]))
+        if not updates:
+            break
+        for y, x, v in updates:
+            zhou[y, x] = v
+    print(f"after absorb filled={int((zhou > 0).sum())} empty-coast={int(((zhou == 0) & (coast > 0)).sum())}", flush=True)
+    zhou = fill_interior_holes(zhou, coast, np.zeros_like(barrier))
+
+    counts = Counter(zhou_names[int(i)] for i in zhou.ravel() if i)
+    args.out_bin.write_bytes(zhou.astype(np.uint8).tobytes())
     meta = {
-        "zhou_names": [""] + names,
+        "zhou_names": zhou_names,
         "counts": dict(counts),
-        "n_filled": int((hex_zhou > 0).sum()),
-        "bin": str(bin_path),
+        "n_filled": int((zhou > 0).sum()),
+        "n_barrier": int(barrier.sum()),
+        "bin": str(args.out_bin),
         "layout": "uint8 zhou_idx row-major 500x500",
-        "authority": "Tan-262 purple 州 boundaries",
+        "authority": "Tan-262 purple 州 boundaries (georef flood, solid hex)",
+        "method": "purple→hex barriers; multi-source flood from 州/郡 seats; hole fill",
     }
-    args.out_hex.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    print(f"wrote {args.out_hex} filled={meta['n_filled']} counts={meta['counts']}")
+    args.out_meta.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
+    print(f"wrote {args.out_meta} filled={meta['n_filled']} counts={meta['counts']}")
+    missing = [n for n in CANON if counts.get(n, 0) == 0]
+    if missing:
+        print("WARNING empty 州:", missing)
     return 0
 
 

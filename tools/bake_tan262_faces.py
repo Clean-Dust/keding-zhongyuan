@@ -111,29 +111,6 @@ def main() -> int:
     # only on coast land
     zhou_cell[coast == 0] = 0
 
-    # Seat-paint fallback for 州 with seats but empty purple coverage (e.g. 徐州).
-    SEAT_R2 = 1.8**2
-    for z in pts["zhou"]:
-        zid = zhou_index.get(z["zhou"])
-        if not zid:
-            continue
-        if int((zhou_cell == zid).sum()) >= 200:
-            continue
-        seats = [(z["lon"], z["lat"])]
-        for j in pts["jun"]:
-            if j.get("zhou") == z["zhou"]:
-                seats.append((j["lon"], j["lat"]))
-        painted = 0
-        for row in range(MAP_H):
-            for col in range(MAP_W):
-                if coast[row, col] == 0 or zhou_cell[row, col] != 0:
-                    continue
-                lon, lat = offset_to_lonlat(col, row)
-                if any((lon - sl) ** 2 + (lat - st) ** 2 <= SEAT_R2 for sl, st in seats):
-                    zhou_cell[row, col] = zid
-                    painted += 1
-        print(f"  seat-fallback {z['zhou']} +{painted}", flush=True)
-
     # 郡 table
     jun_table = [""]
     jun_index: dict[str, int] = {}
@@ -158,8 +135,27 @@ def main() -> int:
             seeds.append((col, row, jid))
         if not seeds or not allowed.any():
             continue
-        filled = multi_source_hex(allowed, seeds, max_dist=90)
+        filled = multi_source_hex(allowed, seeds, max_dist=120)
         jun_cell[filled > 0] = filled[filled > 0]
+
+    # Fill empty hexes inside a 州 with nearest 郡治 of that 州 (no white holes)
+    for zname, zid in zhou_index.items():
+        mask = (zhou_cell == zid) & (jun_cell == 0) & (coast > 0)
+        if not mask.any():
+            continue
+        juns = [(j["jun"], j["lon"], j["lat"], jun_index[j["jun"]]) for j in pts["jun"] if j.get("zhou") == zname and j["jun"] in jun_index]
+        if not juns:
+            continue
+        ys, xs = np.where(mask)
+        for row, col in zip(ys, xs):
+            lon, lat = offset_to_lonlat(col, row)
+            best_j, best_d = 0, 1e18
+            for _n, slon, slat, jid in juns:
+                d = (lon - slon) ** 2 + (lat - slat) ** 2
+                if d < best_d:
+                    best_d, best_j = d, jid
+            if best_j:
+                jun_cell[row, col] = best_j
 
     # Sync 州 from 郡 parent where jun labeled
     for jid, zid in jun_to_zhou.items():
