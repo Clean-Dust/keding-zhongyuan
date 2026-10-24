@@ -50,13 +50,14 @@ func _init() -> void:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
 	## Sinica-traced faces + admin points. 江夏 must be 荆州.
-	if zhou_n < 50000:
+	## Thresholds reflect ink-sealed fills (empty western parchment stays unlabeled).
+	if zhou_n < 40000:
 		push_error("expected Sinica 州 fills, zhou=%d" % zhou_n)
 		failed += 1
-	if jun_n < 50000:
+	if jun_n < 40000:
 		push_error("expected Sinica 郡 fills, jun=%d" % jun_n)
 		failed += 1
-	if xian_n < 50000:
+	if xian_n < 40000:
 		push_error("expected 县 fills inside 郡, xian=%d" % xian_n)
 		failed += 1
 	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
@@ -334,10 +335,10 @@ func _init() -> void:
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if z2 < 50000:
+		if z2 < 40000:
 			push_error("load lost 州 fills zhou=%d" % z2)
 			failed += 1
-		if x2 < 50000:
+		if x2 < 40000:
 			push_error("load lost 县 fills xian=%d" % x2)
 			failed += 1
 	print(
