@@ -314,6 +314,14 @@ def near_seats(lon: float, lat: float, seats: list[tuple[float, float]], deg2: f
     return False
 
 
+def on_sea_mask(sea_mask: np.ndarray, lon: float, lat: float, w: int, h: int) -> bool:
+    """True if lon/lat samples underlay sea (plate exterior / coast)."""
+    x, y = lonlat_to_xy(lon, lat, w, h)
+    if not (0 <= x < w and 0 <= y < h):
+        return True
+    return bool(sea_mask[y, x])
+
+
 def sample_label(
     labels: np.ndarray, lon: float, lat: float, w: int, h: int, max_rad: int = 2
 ) -> int:
@@ -352,11 +360,15 @@ def main() -> int:
     print(f"underlay {src}")
     im = np.array(Image.open(src).convert("RGB"))
     h, w, _ = im.shape
-    sealed_land, mod_land, land_jun, _sea, sealed_comp = build_barriers(im)
+    sealed_land, mod_land, land_jun, sea, sealed_comp = build_barriers(im)
+    # Dilate sea slightly so hex faces stop on the brown coastal ink, not in the
+    # blue outside the plate (coast_mask.bin is too generous in the SW).
+    sea_trim = ndimage.binary_dilation(sea, iterations=2)
     comp_size = np.bincount(sealed_comp.ravel())
     print(
         f"  size={w}x{h} sealed={sealed_land.mean():.3f} "
-        f"mod={mod_land.mean():.3f} jun_land={land_jun.mean():.3f}"
+        f"mod={mod_land.mean():.3f} jun_land={land_jun.mean():.3f} "
+        f"sea={sea.mean():.3f}"
     )
 
     pts = json.loads(args.points.read_text(encoding="utf-8"))
@@ -608,7 +620,7 @@ def main() -> int:
 
     # Plate-lock claim: only from locked 郡治 + 县 already in that 郡; only steal
     # listed soft-border 州 (颍川←司州 finger at 阳翟, not 南阳/荆州).
-    claim_land = (sealed_land | mod_land) & (~_sea)
+    claim_land = (sealed_land | mod_land) & (~sea)
     jun_by_name = {jp["jun"]: jp for jp in jun_pts}
     n_claim_total = 0
     for jname, zname in SINICA_JUN_PARENT.items():
@@ -792,10 +804,32 @@ def main() -> int:
     hex_zhou = np.zeros((MAP_H, MAP_W), dtype=np.int16)
     hex_jun = np.zeros((MAP_H, MAP_W), dtype=np.int16)
 
+    def hex_is_land(col: int, row: int) -> bool:
+        """coast_mask land AND not underlay sea (stops faces on brown coast / plate edge).
+
+        Also reject hexes whose underlay footprint is mostly sea — NN upsample
+        otherwise paints a SW 'lump' past the plate into the blue.
+        """
+        i = row * MAP_W + col
+        if coast[i] == 0:
+            return False
+        lon, lat = offset_to_lonlat(col, row)
+        if on_sea_mask(sea_trim, lon, lat, w, h):
+            return False
+        # Footprint in underlay pixels for this hex cell
+        x0 = int(col / MAP_W * w)
+        x1 = max(x0 + 1, int((col + 1) / MAP_W * w))
+        y0 = int(row / MAP_H * h)
+        y1 = max(y0 + 1, int((row + 1) / MAP_H * h))
+        patch = sea[y0:y1, x0:x1]
+        if patch.size and float(patch.mean()) >= 0.08:
+            return False
+        return True
+
     for row in range(MAP_H):
         for col in range(MAP_W):
             i = row * MAP_W + col
-            if coast[i] == 0:
+            if not hex_is_land(col, row):
                 continue
             land_n += 1
             lon, lat = offset_to_lonlat(col, row)
@@ -814,7 +848,7 @@ def main() -> int:
                 jun_filled += 1
                 jun_counts[jun_table[jid]] += 1
 
-    # Hex flood for 益州 gaps: only into empty coast within 益州 seat reach (no lon band).
+    # Hex flood for 益州 gaps: only into empty plate-land within 益州 seat reach (no lon band).
     yizhou_id = zhou_index.get("益州", 0)
     yi_seats_hex = zhou_seats.get("益州", [])
     hex_gap_q: deque[tuple[int, int, int, int, int]] = deque()
@@ -823,7 +857,7 @@ def main() -> int:
         for row in range(MAP_H):
             for col in range(MAP_W):
                 i = row * MAP_W + col
-                if coast[i] == 0 or zhou_cell[i] != yizhou_id:
+                if not hex_is_land(col, row) or zhou_cell[i] != yizhou_id:
                     continue
                 hex_gap_q.append((col, row, yizhou_id, jun_cell[i], 0))
                 hex_gap_dist[row, col] = 0
@@ -838,7 +872,7 @@ def main() -> int:
             if not (0 <= nc < MAP_W and 0 <= nr < MAP_H):
                 continue
             ni = nr * MAP_W + nc
-            if coast[ni] == 0 or zhou_cell[ni] != 0:
+            if not hex_is_land(nc, nr) or zhou_cell[ni] != 0:
                 continue
             lon, lat = offset_to_lonlat(nc, nr)
             if not near_seats(lon, lat, yi_seats_hex):
@@ -860,6 +894,7 @@ def main() -> int:
     # Rebuild seats here — 郡父锁定 may have updated jun_pts parents.
     zhou_seats = seats_by_zhou(jun_pts, xian_pts)
     n_hex_trim = 0
+    n_sea_trim = 0
     for row in range(MAP_H):
         for col in range(MAP_W):
             i = row * MAP_W + col
@@ -867,6 +902,14 @@ def main() -> int:
             if not zid:
                 continue
             lon, lat = offset_to_lonlat(col, row)
+            # Always drop faces that sit on underlay sea (SW plate overshoot).
+            if on_sea_mask(sea_trim, lon, lat, w, h):
+                zhou_cell[i] = 0
+                jun_cell[i] = 0
+                hex_zhou[row, col] = 0
+                hex_jun[row, col] = 0
+                n_sea_trim += 1
+                continue
             if near_seats(lon, lat, zhou_seats.get(zhou_table[zid], [])):
                 continue
             zhou_cell[i] = 0
@@ -875,6 +918,7 @@ def main() -> int:
             hex_jun[row, col] = 0
             n_hex_trim += 1
     print(f"  hex seat-reach trim cells={n_hex_trim}")
+    print(f"  hex underlay-sea / coast trim cells={n_sea_trim}")
 
     # Nearest 益州 郡 for 益州 cells.
     if yizhou_id:
@@ -887,7 +931,7 @@ def main() -> int:
         for row in range(MAP_H):
             for col in range(MAP_W):
                 i = row * MAP_W + col
-                if coast[i] == 0 or zhou_cell[i] != yizhou_id or not yi_jun_seeds:
+                if not hex_is_land(col, row) or zhou_cell[i] != yizhou_id or not yi_jun_seeds:
                     continue
                 lon, lat = offset_to_lonlat(col, row)
                 best_j, best_d = 0, SEAT_REACH_DEG2
@@ -901,15 +945,17 @@ def main() -> int:
                     n_yi_jun += 1
         print(f"  益州 nearest-郡 assign cells={n_yi_jun}")
 
-    # Recompute counts
+    # Recompute counts (plate-land only — underlay sea excluded)
     zhou_counts = Counter()
     jun_counts = Counter()
     zhou_filled = jun_filled = 0
+    land_n = 0
     for row in range(MAP_H):
         for col in range(MAP_W):
             i = row * MAP_W + col
-            if coast[i] == 0:
+            if not hex_is_land(col, row):
                 continue
+            land_n += 1
             if zhou_cell[i]:
                 zhou_filled += 1
                 zhou_counts[zhou_table[zhou_cell[i]]] += 1

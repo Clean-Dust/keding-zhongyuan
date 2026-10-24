@@ -187,12 +187,12 @@
   "bin": "zhou_jun_fills.bin",
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
-    "land": 170246,
-    "zhou_filled": 103750,
-    "jun_filled": 97426,
-    "xian_filled": 96614,
-    "zhou_fill_rate_land": 0.6094,
-    "jun_fill_rate_land": 0.5723,
+    "land": 142636,
+    "zhou_filled": 98910,
+    "jun_filled": 87718,
+    "xian_filled": 86912,
+    "zhou_fill_rate_land": 0.6934,
+    "jun_fill_rate_land": 0.615,
     "zhou_units": 14,
     "jun_units": 134
   },
