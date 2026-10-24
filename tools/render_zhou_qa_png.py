@@ -61,15 +61,15 @@ def main() -> int:
         r, g, b = colorsys.hsv_to_rgb(h, s, v)
         pal[i] = (int(r * 255), int(g * 255), int(b * 255))
 
-    # RIGHT starts as the underlay; paint solid colors ONLY on beige land with a 州 id.
-    # Sea / 羌胡 / empty west keep the underlay (not painted).
+    # RIGHT: solid-fill every hex that has a 州 id. Do not require underlay beige —
+    # rivers/ink/grid inside a 州 were leaving white holes. Still skip dark sea.
     solid = base.copy()
     r = base[:, :, 0].astype(np.float32)
     g = base[:, :, 1].astype(np.float32)
     b = base[:, :, 2].astype(np.float32)
     lum = (r + g + b) / 3.0
-    beige = (lum > 125) & (lum < 235) & (r > 145) & (g > 135) & (r + g > b * 1.55)
-    painted = (zhou_u > 0) & beige
+    sea = (lum < 95) | ((b > r + 20) & (b > g + 15) & (lum < 140))
+    painted = (zhou_u > 0) & (~sea)
     solid[painted] = pal[zhou_u[painted]]
 
     side = np.concatenate([base, solid], axis=1)

@@ -476,6 +476,25 @@ def main() -> int:
     hex_zhou = keep_largest_per_id(hex_zhou, land_ok=land_ok, close_px=8)
     hex_zhou[land_ok == 0] = 0
     hex_zhou = keep_largest_per_id(hex_zhou, land_ok=land_ok, close_px=0)
+    # Solid-fill interior holes inside each 州 outer contour (beige land only).
+    for zid in range(1, n_zhou):
+        m = (hex_zhou == zid).astype(np.uint8)
+        if not m.any():
+            continue
+        cnts, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts:
+            continue
+        poly = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
+        cv2.fillPoly(poly, [max(cnts, key=cv2.contourArea)], 1)
+        hole = (poly > 0) & (land_ok > 0) & ((hex_zhou == 0) | (hex_zhou == zid))
+        # do not steal foreign 州 cells
+        hole = hole & ((hex_zhou == 0) | (hex_zhou == zid))
+        # skip empty cells that touch a foreign 州 (edge, not interior)
+        foreign = (hex_zhou != 0) & (hex_zhou != zid)
+        near_f = cv2.dilate(foreign.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=1) > 0
+        empty = hole & (hex_zhou == 0) & ~near_f
+        hex_zhou[empty] = zid
+        hex_zhou[hole & (hex_zhou == zid)] = zid
 
     mxj = jun_votes.max(axis=0)
     hex_jun = np.where(mxj > 0, jun_votes.argmax(axis=0), 0).astype(np.uint16)

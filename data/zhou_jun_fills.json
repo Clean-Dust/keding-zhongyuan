@@ -10,7 +10,7 @@
   },
   "zhou": {
     "source": "Tan-262 purple 州 outline polygons",
-    "method": "purple pocket union → outer contour → hex rasterize; largest CC per 州",
+    "method": "sheet purple-mask interior fill on beige land; no expand/sea",
     "units": 14
   },
   "jun": {
@@ -183,9 +183,9 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 143831,
-    "zhou_filled": 75744,
-    "jun_filled": 75744,
-    "xian_filled": 74213,
+    "zhou_filled": 86413,
+    "jun_filled": 86413,
+    "xian_filled": 84029,
     "zhou_units": 14,
     "jun_units": 134
   },
