@@ -94,16 +94,11 @@ CLAIM_STEAL_FROM = {
     "魏郡": {"司州", "司隶", "豫州"},
     "武陆郡": {"益州"},
 }
-# Empty SW parchment (发羌) — clear 益州 bleed unless near plate seats.
-# Plate admin for 永昌/汉嘉 continues west of 99°E; only far parchment stays empty.
-SW_CLEAR_LON = 97.6
-SW_KEEP_DEG = 2.0
-SW_VORONOI_LONS = (97.6, 106.5)
-SW_VORONOI_LAT_MAX = 30.0
-SW_VORONOI_DEG = 2.2
+# Parchment beyond this distance from a same-州 郡/县 seat is not admin.
+# Seat-relative (not a lon rectangle) so 益州's west edge stays ragged with the ink.
+SEAT_REACH_DEG = 2.85
+SEAT_REACH_DEG2 = SEAT_REACH_DEG * SEAT_REACH_DEG
 SW_JUN_NAMES = ("永昌郡", "云南郡", "兴古郡", "建宁郡", "汉嘉郡")
-# 益州 interior fill band (includes western 永昌 face on the plate)
-YIZHOU_BAND = (97.6, 108.5, 22.0, 34.5)  # lon0, lon1, lat0, lat1
 
 
 def lonlat_to_xy(lon: float, lat: float, w: int, h: int) -> tuple[int, int]:
@@ -266,9 +261,6 @@ def fill_small_holes(
     labels: np.ndarray,
     land: np.ndarray,
     max_hole: int = 400,
-    skip_west_empty: bool = False,
-    w: int | None = None,
-    h: int | None = None,
 ) -> np.ndarray:
     """Assign unlabeled land holes fully surrounded by one label."""
     out = labels.copy()
@@ -280,13 +272,6 @@ def fill_small_holes(
         ys, xs = np.where(labeled == i)
         if len(ys) == 0 or len(ys) > max_hole:
             continue
-        if skip_west_empty and w is not None and h is not None:
-            # Don't fill 发羌/羌胡 parchment as if it were an interior 益州 hole
-            cx, cy = int(xs.mean()), int(ys.mean())
-            clon = LON_MIN + (cx + 0.5) / w * (LON_MAX - LON_MIN)
-            clat = LAT_MAX - (cy + 0.5) / h * (LAT_MAX - LAT_MIN)
-            if clon < SW_CLEAR_LON and clat <= 32.0:
-                continue
         neigh = set()
         for y, x in zip(ys, xs):
             for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
@@ -298,14 +283,47 @@ def fill_small_holes(
     return out
 
 
-def sample_label(labels: np.ndarray, lon: float, lat: float, w: int, h: int) -> int:
+def seats_by_zhou(jun_pts: list, xian_pts: list) -> dict[str, list[tuple[float, float]]]:
+    """郡治 + 县治 per 州 for seat-reach trim.
+
+    Skip stray OCR 郡 seed copies far from the 郡治 (永昌 seeds at ~97.5°E
+    would otherwise inflate reach into 发羌 parchment).
+    """
+    out: dict[str, list[tuple[float, float]]] = defaultdict(list)
+    for jp in jun_pts:
+        z = jp.get("zhou") or ""
+        if not z:
+            continue
+        jlon, jlat = float(jp["lon"]), float(jp["lat"])
+        out[z].append((jlon, jlat))
+        for s in jp.get("seeds") or []:
+            slon, slat = float(s["lon"]), float(s["lat"])
+            if (slon - jlon) ** 2 + (slat - jlat) ** 2 <= 1.5**2:
+                out[z].append((slon, slat))
+    for xp in xian_pts:
+        z = xp.get("zhou") or ""
+        if z:
+            out[z].append((float(xp["lon"]), float(xp["lat"])))
+    return out
+
+
+def near_seats(lon: float, lat: float, seats: list[tuple[float, float]], deg2: float = SEAT_REACH_DEG2) -> bool:
+    for slon, slat in seats:
+        if (lon - slon) ** 2 + (lat - slat) ** 2 <= deg2:
+            return True
+    return False
+
+
+def sample_label(
+    labels: np.ndarray, lon: float, lat: float, w: int, h: int, max_rad: int = 2
+) -> int:
     x, y = lonlat_to_xy(lon, lat, w, h)
     if not (0 <= x < w and 0 <= y < h):
         return 0
     lid = int(labels[y, x])
     if lid:
         return lid
-    for rad in range(1, 6):
+    for rad in range(1, max_rad + 1):
         for dy in range(-rad, rad + 1):
             for dx in range(-rad, rad + 1):
                 nx, ny = x + dx, y + dy
@@ -541,32 +559,24 @@ def main() -> int:
             if n2:
                 mod_seeds.append((n2[0], n2[1], zid))
 
-    # Mega-pocket cap ONLY on empty-west parchment (lon<SW_CLEAR_LON, lat≤32).
-    # Interior 益州 (蜀/汉嘉/汶山/云南…) shares a mega sealed component with that
-    # parchment — capping the whole component punched a hole in continuous admin.
+    # Flood uncapped through sealed ink. Trim parchment by distance to Sinica
+    # seats of the same 州 (ragged), never by a longitude rectangle.
+    zhou_seats = seats_by_zhou(jun_pts, xian_pts)
     core_uncapped = multi_source(sealed_land, sealed_seeds)
-    core_capped = multi_source(sealed_land, sealed_seeds, max_dist=SEED_CLEAR_DIST)
     core = core_uncapped.copy()
     ys, xs = np.where(core_uncapped > 0)
-    for y, x in zip(ys[::5], xs[::5]):
-        cid = int(sealed_comp[y, x])
-        if cid <= 0 or int(comp_size[cid]) <= MAX_SEALED_COMP:
-            continue
-        lon_here = xy_to_lon(int(x), w)
-        lat_here = LAT_MAX - (int(y) + 0.5) / h * (LAT_MAX - LAT_MIN)
-        if lon_here < SW_CLEAR_LON and lat_here <= 32.0:
-            if core_capped[y, x] == 0:
-                core[y, x] = 0
-            else:
-                core[y, x] = core_capped[y, x]
-    # restore any non-west-empty mega pixels that capped pass zeroed
-    ys, xs = np.where((core_uncapped > 0) & (core == 0))
+    n_trim = 0
     for y, x in zip(ys, xs):
+        zid = int(core[y, x])
+        if zid <= 0:
+            continue
+        zname = zhou_table[zid]
         lon_here = xy_to_lon(int(x), w)
         lat_here = LAT_MAX - (int(y) + 0.5) / h * (LAT_MAX - LAT_MIN)
-        if lon_here < SW_CLEAR_LON and lat_here <= 32.0:
-            continue
-        core[y, x] = core_uncapped[y, x]
+        if not near_seats(lon_here, lat_here, zhou_seats.get(zname, [])):
+            core[y, x] = 0
+            n_trim += 1
+    print(f"  seat-reach trim core px={n_trim} (no lon rectangle)")
 
     admin_zone = ndimage.binary_dilation(core > 0, iterations=ADMIN_ZONE_DILATE)
     land2 = mod_land & admin_zone
@@ -576,12 +586,25 @@ def main() -> int:
         if land2[y, x]:
             grow_seeds.append((int(x), int(y), int(core[y, x])))
     grown = multi_source(land2, grow_seeds, max_dist=GROW_MAX_DIST)
+    # Drop grown pixels outside seat reach (keeps 羌胡/发羌 empty without a lon wall)
+    gys, gxs = np.where(grown > 0)
+    for y, x in zip(gys, gxs):
+        zid = int(grown[y, x])
+        lon_here = xy_to_lon(int(x), w)
+        lat_here = LAT_MAX - (int(y) + 0.5) / h * (LAT_MAX - LAT_MIN)
+        if not near_seats(lon_here, lat_here, zhou_seats.get(zhou_table[zid], [])):
+            grown[y, x] = 0
     zhou_labels = np.where(core > 0, core, grown)
-    # Large interior holes (益州 continuous admin) — skip empty-west parchment
     zhou_labels = fill_small_holes(zhou_labels, land2 | sealed_land, max_hole=800)
-    zhou_labels = fill_small_holes(
-        zhou_labels, sealed_land, max_hole=25000, skip_west_empty=True, w=w, h=h
-    )
+    zhou_labels = fill_small_holes(zhou_labels, sealed_land, max_hole=25000)
+    # Re-trim after hole fill so enclosed parchment holes don't stick
+    ys, xs = np.where(zhou_labels > 0)
+    for y, x in zip(ys, xs):
+        zid = int(zhou_labels[y, x])
+        lon_here = xy_to_lon(int(x), w)
+        lat_here = LAT_MAX - (int(y) + 0.5) / h * (LAT_MAX - LAT_MIN)
+        if not near_seats(lon_here, lat_here, zhou_seats.get(zhou_table[zid], [])):
+            zhou_labels[y, x] = 0
 
     # Plate-lock claim: only from locked 郡治 + 县 already in that 郡; only steal
     # listed soft-border 州 (颍川←司州 finger at 阳翟, not 南阳/荆州).
@@ -621,30 +644,30 @@ def main() -> int:
         print(f"  plate-lock {jname}→{zname} seeds={len(claim_seeds)} px={n_claim}")
     print(f"  plate-lock claim total_px={n_claim_total}")
 
-    # Grow 益州 into its interior sealed_land hole only (汉嘉–蜀–云南 band).
-    # Global gap grow paints 羌胡; empty-west 发羌 stays blocked.
+    # Grow 益州 into unlabeled sealed_land within seat reach of 益州 seats only
+    # (no lon rectangle — west edge follows ink + seat hull).
     yizhou_id_early = zhou_index.get("益州", 0)
-    ylon0, ylon1, ylat0, ylat1 = YIZHOU_BAND
+    yi_seats = zhou_seats.get("益州", [])
     gap_allowed = np.zeros_like(sealed_land)
-    gys, gxs = np.where(sealed_land)
-    for y, x in zip(gys, gxs):
-        lon_here = xy_to_lon(int(x), w)
-        lat_here = LAT_MAX - (int(y) + 0.5) / h * (LAT_MAX - LAT_MIN)
-        if not (ylon0 <= lon_here <= ylon1 and ylat0 <= lat_here <= ylat1):
-            continue
-        gap_allowed[y, x] = True
+    if yizhou_id_early and yi_seats:
+        gys, gxs = np.where(sealed_land & (zhou_labels == 0))
+        for y, x in zip(gys, gxs):
+            lon_here = xy_to_lon(int(x), w)
+            lat_here = LAT_MAX - (int(y) + 0.5) / h * (LAT_MAX - LAT_MIN)
+            if near_seats(lon_here, lat_here, yi_seats):
+                gap_allowed[y, x] = True
     gap_seeds: list[tuple[int, int, int]] = []
     if yizhou_id_early:
         gys, gxs = np.where(zhou_labels == yizhou_id_early)
         for y, x in zip(gys[::4], gxs[::4]):
             gap_seeds.append((int(x), int(y), yizhou_id_early))
-    if gap_seeds:
+    if gap_seeds and gap_allowed.any():
         gap_land = gap_allowed | (zhou_labels == yizhou_id_early)
         gap_fill = multi_source(gap_land, gap_seeds, allowed=gap_land, max_dist=500)
         gap_m = (zhou_labels == 0) & gap_allowed & (gap_fill == yizhou_id_early)
         n_gap = int(gap_m.sum())
         zhou_labels[gap_m] = yizhou_id_early
-        print(f"  益州 interior gap fill px={n_gap}")
+        print(f"  益州 seat-reach gap fill px={n_gap}")
 
     print(
         f"  州 core={(core > 0).mean():.3f} final={(zhou_labels > 0).mean():.3f} "
@@ -728,38 +751,21 @@ def main() -> int:
             jun_labels_mask = jun_labels == jid
             zhou_labels[jun_labels_mask] = zid
 
-    # Clear empty SW parchment after jun→zhou sync (永昌 flood must not refill 发羌).
-    # Do NOT touch 凉州/河西 (敦煌 ~96°E) — only 益州 (and its SW 郡) west of the cut.
-    yizhou_id = zhou_index.get("益州", 0)
-    sw_seat_ll = [
-        (float(jp["lon"]), float(jp["lat"]))
-        for jp in jun_pts
-        if jp["jun"] in SW_JUN_NAMES
-    ]
-    sw_jun_ids = {jun_index[n] for n in SW_JUN_NAMES if n in jun_index}
-    if yizhou_id and sw_seat_ll:
-        ys, xs = np.where(zhou_labels == yizhou_id)
-        cleared_px = 0
-        for y, x in zip(ys, xs):
-            lon = xy_to_lon(int(x), w)
-            if lon >= SW_CLEAR_LON:
-                continue
-            # Hexi is north; SW empty/发羌 is south of ~32°N
-            lat = LAT_MAX - (y + 0.5) / h * (LAT_MAX - LAT_MIN)
-            if lat > 32.0:
-                continue
-            if any(
-                ((lon - slon) ** 2 + (lat - slat) ** 2) ** 0.5 < SW_KEEP_DEG
-                for slon, slat in sw_seat_ll
-            ):
-                continue
-            zhou_labels[y, x] = 0
-            if int(jun_labels[y, x]) in sw_jun_ids or jun_labels[y, x] > 0:
-                jun_labels[y, x] = 0
-            cleared_px += 1
-        print(f"  SW raster clear 益州 west<{SW_CLEAR_LON} lat<=32 px={cleared_px}")
+    # Trim all 州 after jun→zhou sync: keep only seat-reach (ragged, no lon wall).
+    cleared_px = 0
+    ys, xs = np.where(zhou_labels > 0)
+    for y, x in zip(ys, xs):
+        zid = int(zhou_labels[y, x])
+        lon = xy_to_lon(int(x), w)
+        lat = LAT_MAX - (y + 0.5) / h * (LAT_MAX - LAT_MIN)
+        if near_seats(lon, lat, zhou_seats.get(zhou_table[zid], [])):
+            continue
+        zhou_labels[y, x] = 0
+        jun_labels[y, x] = 0
+        cleared_px += 1
+    print(f"  seat-reach trim after jun sync px={cleared_px}")
 
-    # Re-run pixel self-check after SW clear (initial checks ran pre-jun).
+    # Re-run pixel self-check after seat-reach trim.
     fails = []
     for lon, lat, expect in CHECKS:
         lid = sample_label(zhou_labels, lon, lat, w, h)
@@ -808,25 +814,9 @@ def main() -> int:
                 jun_filled += 1
                 jun_counts[jun_table[jid]] += 1
 
-    # Hex flood ONLY for 益州 interior hole (汉嘉↔云南↔蜀 continuous admin on plate).
-    # Do not run a global empty-coast flood — that paints 羌胡 / sea-margin parchment.
+    # Hex flood for 益州 gaps: only into empty coast within 益州 seat reach (no lon band).
     yizhou_id = zhou_index.get("益州", 0)
-    sw_seat_ll_hex = [
-        (float(jp["lon"]), float(jp["lat"]))
-        for jp in jun_pts
-        if jp["jun"] in SW_JUN_NAMES
-    ]
-
-    def _near_sw_seat(lon: float, lat: float) -> bool:
-        return any(
-            ((lon - slon) ** 2 + (lat - slat) ** 2) ** 0.5 < SW_KEEP_DEG
-            for slon, slat in sw_seat_ll_hex
-        )
-
-    def _in_yizhou_hole_band(lon: float, lat: float) -> bool:
-        lon0, lon1, lat0, lat1 = YIZHOU_BAND
-        return lon0 <= lon <= lon1 and lat0 <= lat <= lat1
-
+    yi_seats_hex = zhou_seats.get("益州", [])
     hex_gap_q: deque[tuple[int, int, int, int, int]] = deque()
     hex_gap_dist = np.full((MAP_H, MAP_W), 10**9, dtype=np.int32)
     if yizhou_id:
@@ -834,9 +824,6 @@ def main() -> int:
             for col in range(MAP_W):
                 i = row * MAP_W + col
                 if coast[i] == 0 or zhou_cell[i] != yizhou_id:
-                    continue
-                lon, lat = offset_to_lonlat(col, row)
-                if not _in_yizhou_hole_band(lon, lat):
                     continue
                 hex_gap_q.append((col, row, yizhou_id, jun_cell[i], 0))
                 hex_gap_dist[row, col] = 0
@@ -854,12 +841,7 @@ def main() -> int:
             if coast[ni] == 0 or zhou_cell[ni] != 0:
                 continue
             lon, lat = offset_to_lonlat(nc, nr)
-            if not _in_yizhou_hole_band(lon, lat):
-                continue
-            # Deep-SW parchment south of 永昌 (CHECK 98°E/23°N) stays empty
-            if lon < 99.2 and lat <= 23.8:
-                continue
-            if lon < SW_CLEAR_LON and lat <= 32.0 and not _near_sw_seat(lon, lat):
+            if not near_seats(lon, lat, yi_seats_hex):
                 continue
             nd = d + 1
             if nd >= hex_gap_dist[nr, nc]:
@@ -872,9 +854,29 @@ def main() -> int:
             n_hex_gap += 1
             hex_gap_dist[nr, nc] = nd
             hex_gap_q.append((nc, nr, zid, jid, nd))
-    print(f"  hex 益州 interior gap fill cells={n_hex_gap}")
+    print(f"  hex 益州 seat-reach gap fill cells={n_hex_gap}")
 
-    # Nearest 益州 郡 for gap-filled cells (inherited neighbor jun is often wrong).
+    # Drop any hex outside its 州 seat reach (final ragged trim, no lon wall).
+    # Rebuild seats here — 郡父锁定 may have updated jun_pts parents.
+    zhou_seats = seats_by_zhou(jun_pts, xian_pts)
+    n_hex_trim = 0
+    for row in range(MAP_H):
+        for col in range(MAP_W):
+            i = row * MAP_W + col
+            zid = zhou_cell[i]
+            if not zid:
+                continue
+            lon, lat = offset_to_lonlat(col, row)
+            if near_seats(lon, lat, zhou_seats.get(zhou_table[zid], [])):
+                continue
+            zhou_cell[i] = 0
+            jun_cell[i] = 0
+            hex_zhou[row, col] = 0
+            hex_jun[row, col] = 0
+            n_hex_trim += 1
+    print(f"  hex seat-reach trim cells={n_hex_trim}")
+
+    # Nearest 益州 郡 for 益州 cells.
     if yizhou_id:
         yi_jun_seeds = [
             (jp["jun"], float(jp["lon"]), float(jp["lat"]), jun_index[jp["jun"]])
@@ -888,7 +890,7 @@ def main() -> int:
                 if coast[i] == 0 or zhou_cell[i] != yizhou_id or not yi_jun_seeds:
                     continue
                 lon, lat = offset_to_lonlat(col, row)
-                best_j, best_d = 0, 16.0  # 4°
+                best_j, best_d = 0, SEAT_REACH_DEG2
                 for _name, slon, slat, jid in yi_jun_seeds:
                     d = (lon - slon) ** 2 + (lat - slat) ** 2
                     if d < best_d:
@@ -899,7 +901,7 @@ def main() -> int:
                     n_yi_jun += 1
         print(f"  益州 nearest-郡 assign cells={n_yi_jun}")
 
-    # Recompute counts after hex gap fill
+    # Recompute counts
     zhou_counts = Counter()
     jun_counts = Counter()
     zhou_filled = jun_filled = 0
@@ -915,69 +917,7 @@ def main() -> int:
                 jun_filled += 1
                 jun_counts[jun_table[jun_cell[i]]] += 1
 
-    # SW 益州: nearest-seat voronoi in the plate band, then clear empty west of 永昌.
-    yizhou_id = zhou_index.get("益州", 0)
-    sw_seats = [
-        (float(jp["lon"]), float(jp["lat"]), jun_index[jp["jun"]])
-        for jp in jun_pts
-        if jp["jun"] in SW_JUN_NAMES and jp["jun"] in jun_index
-    ]
-    if yizhou_id and sw_seats:
-        painted = Counter()
-        cleared = 0
-        lon0, lon1 = SW_VORONOI_LONS
-        for row in range(MAP_H):
-            for col in range(MAP_W):
-                i = row * MAP_W + col
-                if coast[i] == 0:
-                    continue
-                lon, lat = offset_to_lonlat(col, row)
-                zid = zhou_cell[i]
-                jid = jun_cell[i]
-                if lon0 <= lon <= lon1 and lat <= SW_VORONOI_LAT_MAX:
-                    if zid == 0 or zid == yizhou_id:
-                        best_j, best_d = 0, SW_VORONOI_DEG**2
-                        for slon, slat, sjid in sw_seats:
-                            d = (lon - slon) ** 2 + (lat - slat) ** 2
-                            if d < best_d:
-                                best_d, best_j = d, sjid
-                        if best_j:
-                            zhou_cell[i] = yizhou_id
-                            jun_cell[i] = best_j
-                            hex_zhou[row, col] = yizhou_id
-                            hex_jun[row, col] = best_j
-                            painted[jun_table[best_j]] += 1
-                            zid, jid = yizhou_id, best_j
-                if zid == yizhou_id and (
-                    (lon < SW_CLEAR_LON and not any(
-                        ((lon - slon) ** 2 + (lat - slat) ** 2) ** 0.5 < SW_KEEP_DEG
-                        for slon, slat, _ in sw_seats
-                    ))
-                    or (lon < 99.2 and lat <= 23.8)
-                ):
-                    zhou_cell[i] = 0
-                    jun_cell[i] = 0
-                    hex_zhou[row, col] = 0
-                    hex_jun[row, col] = 0
-                    cleared += 1
-        # recompute counts after SW edit
-        zhou_counts = Counter()
-        jun_counts = Counter()
-        zhou_filled = jun_filled = 0
-        for row in range(MAP_H):
-            for col in range(MAP_W):
-                i = row * MAP_W + col
-                if coast[i] == 0:
-                    continue
-                if zhou_cell[i]:
-                    zhou_filled += 1
-                    zhou_counts[zhou_table[zhou_cell[i]]] += 1
-                if jun_cell[i]:
-                    jun_filled += 1
-                    jun_counts[jun_table[jun_cell[i]]] += 1
-        print(f"  SW voronoi painted={dict(painted)} cleared_west={cleared}")
-
-    # Hard-empty deep-SW / 羌胡 CHECK anchors (voronoi+gap must not refill parchment).
+    # Hard-empty CHECK anchors only (point samples — not a rectangle).
     for lon, lat, expect in CHECKS:
         if expect != "":
             continue
@@ -990,7 +930,6 @@ def main() -> int:
         jun_cell[i] = 0
         hex_zhou[row, col] = 0
         hex_jun[row, col] = 0
-        # also clear a small neighborhood so stair-steps don't re-sample paint
         for dy in range(-1, 2):
             for dx in range(-1, 2):
                 nc, nr = col + dx, row + dy
