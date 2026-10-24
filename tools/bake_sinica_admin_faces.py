@@ -37,14 +37,14 @@ MAX_JUN_SEED_DEG = 6.0
 ADMIN_ZONE_DILATE = 12
 
 # Self-check samples: (lon, lat, expected_zhou) — expected "" means must be unlabeled
-# Names follow Sinica map labels (司州 not 司隶).
+# Self-check anchors (TK262 parents for 颍川/江夏; 司隶 per TK262 legend).
 CHECKS = [
     (114.71, 31.02, "荆州"),  # 江夏
     (112.54, 33.00, "荆州"),  # 南阳
     (115.90, 28.67, "扬州"),  # 豫章
     (116.78, 32.58, "扬州"),  # 寿春
     (113.47, 34.16, "豫州"),  # 颍川
-    (112.60, 34.73, "司州"),  # 雒阳
+    (112.60, 34.73, "司隶"),  # 雒阳 (TK262: Sili; Sinica OCR often 司州)
     (104.08, 30.65, "益州"),  # 成都
     (102.63, 37.93, "凉州"),  # 武威
     (111.31, 23.49, "交州"),  # 广信
@@ -390,10 +390,22 @@ def main() -> int:
 
     # Assign 郡→州 from ink topology; majority-vote within each sealed component
     # so contested pockets (江夏 vs 豫州 seed bleed) follow the dominant 州.
+    # Honor explicit TK262 / locked parents (do not overwrite).
+    def parent_locked(jp: dict) -> bool:
+        if jp.get("tk262_parent"):
+            return True
+        note = str(jp.get("note") or "")
+        src = str(jp.get("source") or "")
+        return "ThreeKingdoms262" in note or "tk262" in src
+
     jun_comp: dict[str, int] = {}
     for jp in jun_pts:
-        zname = parent_zhou_for_jun(jp)
-        jp["zhou"] = zname
+        if parent_locked(jp) and jp.get("zhou"):
+            zname = jp["zhou"]
+            print(f"  郡父锁定 {jp['jun']}→{zname} (TK262/ref)")
+        else:
+            zname = parent_zhou_for_jun(jp)
+            jp["zhou"] = zname
         xy = lonlat_to_xy(jp["lon"], jp["lat"], w, h)
         n = nudge(sealed_land, *xy, 120)
         jun_comp[jp["jun"]] = int(sealed_comp[n[1], n[0]]) if n else 0
@@ -404,6 +416,8 @@ def main() -> int:
         if cid and jp.get("zhou"):
             votes[cid][jp["zhou"]] += 1
     for jp in jun_pts:
+        if parent_locked(jp):
+            continue
         cid = jun_comp.get(jp["jun"], 0)
         if not cid or cid not in votes:
             continue

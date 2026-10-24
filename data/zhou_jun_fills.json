@@ -17,14 +17,14 @@
   "jun": {
     "source": "Sinica CCTS ad0262 digitize",
     "method": "multi_source_BFS from 郡治 constrained to parent 州 mask",
-    "units": 132
+    "units": 133
   },
   "xian": {
     "source": "nearest Sinica ad0262 县治 inside 郡",
     "bin": "xian_fills.bin",
     "units": 879
   },
-  "citation": "Academia Sinica CCTS ad0262 OCR labels (县); prior Sinica-traced 州/郡 faces",
+  "citation": "Academia Sinica CCTS ad0262 OCR labels (seats); ThreeKingdoms262 by Zhoudadudu (CC BY-SA 4.0) for 州↔郡 parents; based on 中国历史地图集",
   "fidelity_note": "Hex-center sample ~6.9km; raster ink digitize not cadastral",
   "supersedes": [
     "caa7e43 sinica-trace",
@@ -36,7 +36,7 @@
     "兖州",
     "冀州",
     "凉州",
-    "司州",
+    "司隶",
     "并州",
     "幽州",
     "徐州",
@@ -63,14 +63,15 @@
     "东莞郡",
     "东郡",
     "任城郡",
+    "卫国",
     "山阳郡",
+    "泰山郡",
+    "济北国",
     "济阴郡",
     "琅邪国",
+    "阳平郡",
     "陈留国",
     "鲁郡",
-    "卫国",
-    "阳平郡",
-    "泰山郡",
     "乐陵国",
     "勃海郡",
     "安国",
@@ -84,13 +85,6 @@
     "襄国",
     "辽西郡",
     "魏郡",
-    "平阳郡",
-    "弘农郡",
-    "河东郡",
-    "河内郡",
-    "河南尹",
-    "颍川郡",
-    "冯翊郡",
     "张掖郡",
     "敦煌郡",
     "武威郡",
@@ -98,6 +92,12 @@
     "西海郡",
     "酒泉郡",
     "金城郡",
+    "冯翊郡",
+    "平阳郡",
+    "弘农郡",
+    "河东郡",
+    "河内郡",
+    "河南尹",
     "上党郡",
     "乐平郡",
     "太原郡",
@@ -116,9 +116,9 @@
     "东海国",
     "广陵郡",
     "彭城国",
-    "丹阳郡",
     "临川郡",
     "临海郡",
+    "丹阳郡",
     "会稽郡",
     "吴郡",
     "宁国",
@@ -140,12 +140,12 @@
     "汉中郡",
     "汉嘉郡",
     "江阳郡",
+    "汶山郡",
     "涪陵郡",
     "牂柯郡",
     "犍为郡",
     "蜀郡",
     "西充国",
-    "武陆郡",
     "临贺郡",
     "南乡郡",
     "南郡",
@@ -153,24 +153,25 @@
     "宜都郡",
     "新城郡",
     "桂阳郡",
+    "武陆郡",
+    "江夏郡",
     "湘东郡",
     "衡阳郡",
     "襄阳郡",
     "长沙郡",
     "零陵郡",
-    "江夏郡",
     "安丰郡",
     "弋阳郡",
     "梁国",
     "谯郡",
     "陈郡",
+    "颍川郡",
     "京兆郡",
     "北地郡",
     "天水郡",
     "安定郡",
     "广魏郡",
     "扶风郡",
-    "汶山郡",
     "郿国",
     "陇西郡",
     "魏兴郡",
@@ -186,19 +187,19 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 170246,
-    "zhou_filled": 85009,
-    "jun_filled": 71769,
-    "xian_filled": 70362,
-    "zhou_fill_rate_land": 0.4993,
-    "jun_fill_rate_land": 0.4216,
+    "zhou_filled": 85085,
+    "jun_filled": 72011,
+    "xian_filled": 70610,
+    "zhou_fill_rate_land": 0.4998,
+    "jun_fill_rate_land": 0.423,
     "zhou_units": 14,
-    "jun_units": 132
+    "jun_units": 133
   },
   "self_check": {
     "pixel_fails": [
       {
         "expect": "豫州",
-        "got": "司州"
+        "got": "司隶"
       },
       {
         "expect": "幽州",
@@ -212,7 +213,7 @@
     "hex_fails": [
       {
         "expect": "豫州",
-        "got": "司州"
+        "got": "司隶"
       },
       {
         "expect": "幽州",
@@ -223,5 +224,11 @@
         "got": "益州"
       }
     ]
+  },
+  "tk262_reference": {
+    "commons": "https://commons.wikimedia.org/wiki/File:ThreeKingdoms262.png",
+    "author": "Zhoudadudu",
+    "license": "CC BY-SA 4.0",
+    "year": 262
   }
 }

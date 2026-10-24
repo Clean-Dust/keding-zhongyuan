@@ -1,8 +1,8 @@
 {
   "xian_units": 879,
-  "xian_filled": 70362,
-  "jun_filled": 71769,
-  "fill_rate_vs_jun": 0.9804,
+  "xian_filled": 70610,
+  "jun_filled": 72011,
+  "fill_rate_vs_jun": 0.9805,
   "top_xian": [
     [
       "xian:益州/永昌郡/不韦",
@@ -88,7 +88,6 @@
   "juns_without_seats": [
     "兴古郡",
     "西充国",
-    "郁林郡",
     "酒泉郡"
   ]
 }
