@@ -49,12 +49,21 @@ func _init() -> void:
 	if water_n < 1000 or land_n < 10000:
 		push_error("coast bake look wrong land=%d water=%d" % [land_n, water_n])
 		failed += 1
-	## Phase 1+: faces may be empty; never invent 县 faces. No sanguo-map fills.
-	if xian_n != 0:
-		push_error("expected no 县 fills, got %d" % xian_n)
+	## Sinica-traced faces + admin points. 江夏 must be 荆州.
+	if zhou_n < 50000:
+		push_error("expected Sinica 州 fills, zhou=%d" % zhou_n)
+		failed += 1
+	if jun_n < 50000:
+		push_error("expected Sinica 郡 fills, jun=%d" % jun_n)
+		failed += 1
+	if xian_n < 50000:
+		push_error("expected 县 fills inside 郡, xian=%d" % xian_n)
 		failed += 1
 	if not FileAccess.file_exists("res://data/zhou_jun_fills.json") or not FileAccess.file_exists("res://data/zhou_jun_fills.bin"):
 		push_error("missing zhou_jun_fills.json / zhou_jun_fills.bin")
+		failed += 1
+	if not FileAccess.file_exists("res://data/xian_fills.json") or not FileAccess.file_exists("res://data/xian_fills.bin"):
+		push_error("missing xian_fills.json / xian_fills.bin")
 		failed += 1
 	if not FileAccess.file_exists("res://data/admin_points.json"):
 		push_error("missing admin_points.json")
@@ -93,14 +102,20 @@ func _init() -> void:
 			if not jx_ok:
 				push_error("江夏郡 missing from admin_points")
 				failed += 1
-	## Sample: 会稽 seat exists as 县治; no face paint required.
+	## 会稽 → 扬州; 江夏 seat area → 荆州 (not 扬州).
 	var kuaiji := Hex.lonlat_to_offset(120.582, 30.002)
 	var kidx := kuaiji.y * Hex.MAP_W + kuaiji.x
 	if kidx >= 0 and kidx < ws.hexes.size():
 		var kh: Dictionary = ws.hexes[kidx]
-		## Faces may be empty in phase 1; if painted later, 扬州/会稽 is ok.
-		if str(kh.get("zhou_id", "")) != "" and str(kh.get("zhou_id", "")) != "扬州":
-			push_error("会稽 hex zhou_id=%s unexpected" % kh.get("zhou_id", ""))
+		if str(kh.get("zhou_id", "")) != "扬州":
+			push_error("会稽 hex zhou_id=%s expected 扬州" % kh.get("zhou_id", ""))
+			failed += 1
+	var jx := Hex.lonlat_to_offset(114.71, 31.02)
+	var jxi := jx.y * Hex.MAP_W + jx.x
+	if jxi >= 0 and jxi < ws.hexes.size():
+		var jh: Dictionary = ws.hexes[jxi]
+		if str(jh.get("zhou_id", "")) != "荆州":
+			push_error("江夏 hex zhou_id=%s expected 荆州" % jh.get("zhou_id", ""))
 			failed += 1
 	var seats_n := CountiesRoster.seat_count()
 	if seats_n < 500:
@@ -124,8 +139,11 @@ func _init() -> void:
 		var seat_idx := row * Hex.MAP_W + col
 		if seat_idx >= 0 and seat_idx < ws.hexes.size():
 			var seat_hex: Dictionary = ws.hexes[seat_idx]
-			if str(seat_hex.get("xian_id", "")) != "":
-				push_error("雒阳 should not have xian_id fill")
+			if str(seat_hex.get("zhou_id", "")) != "司隶":
+				push_error("雒阳 hex zhou_id=%s expected 司隶" % seat_hex.get("zhou_id", ""))
+				failed += 1
+			if str(seat_hex.get("xian_id", "")) != luoyang_id:
+				push_error("雒阳 hex xian_id=%s expected %s" % [seat_hex.get("xian_id", ""), luoyang_id])
 				failed += 1
 		break
 	if not luoyang_ok:
@@ -301,19 +319,26 @@ func _init() -> void:
 	elif ws2.hexes.size() != ws.hexes.size() or int(ws2.time.day) != int(ws.time.day):
 		failed += 1
 	else:
-		## Coast reapplied on load; 县 faces must stay empty.
+		## Coast + admin fills reapplied on load.
 		var w2 := 0
+		var z2 := 0
 		var x2 := 0
 		for h2 in ws2.hexes:
 			if str(h2.get("terrain", "")) == "water":
 				w2 += 1
-			elif str(h2.get("xian_id", "")) != "":
-				x2 += 1
+			else:
+				if str(h2.get("zhou_id", "")) != "":
+					z2 += 1
+				if str(h2.get("xian_id", "")) != "":
+					x2 += 1
 		if w2 < 1000:
 			push_error("load lost coast water=%d" % w2)
 			failed += 1
-		if x2 != 0:
-			push_error("load invented xian fills=%d" % x2)
+		if z2 < 50000:
+			push_error("load lost 州 fills zhou=%d" % z2)
+			failed += 1
+		if x2 < 50000:
+			push_error("load lost 县 fills xian=%d" % x2)
 			failed += 1
 	print(
 		"dual_scale_smoke passed=%d failed=%d hexes=%d map=%dx%d land=%d water=%d zhou_fills=%d jun_fills=%d xian_fills=%d roster=%d seats=%d z_hex=%.2f" % [

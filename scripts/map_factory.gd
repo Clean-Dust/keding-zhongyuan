@@ -2,13 +2,15 @@ class_name MapFactory
 extends RefCounted
 ## Builds 500×500 even-r map: Natural Earth coast (plain/water) + edge-city anchors.
 ## Fixed square grid; south bbox to 象林 (docs/edge-cities-sanguo.md). Labels only at anchors.
-## Admin paint: per-hex `zhou_id` / `jun_id` from sanguo-map GeoJSON PIP (`zhou_jun_fills.*`).
-## 县: no county faces — `xian_id` stays empty; seats are CHGIS markers only.
+## Admin paint: `zhou_id`/`jun_id` from Sinica-traced fills; optional `xian_id` from xian_fills.
+## Points: data/admin_points.json. Sinica underlay is QA only.
 ## Never loads legacy admin_zhou/jun/xian rings or admin_hex.json.
 
 const COAST_BIN := "res://data/coast_mask.bin"
 const ZHOU_JUN_FILLS_META := "res://data/zhou_jun_fills.json"
 const ZHOU_JUN_FILLS_BIN := "res://data/zhou_jun_fills.bin"
+const XIAN_FILLS_META := "res://data/xian_fills.json"
+const XIAN_FILLS_BIN := "res://data/xian_fills.bin"
 
 
 ## Extreme + optional helper anchors: name, lat °N, lon °E, id, optional owner.
@@ -125,16 +127,16 @@ static func build_blank_grid(w: int, h: int) -> Array:
 	return out
 
 
-## Load sanguo-map polygon hex-center fills (zhou_idx + jun_idx uint16 LE per cell).
+## Load Sinica-traced zhou/jun fills; optional nearest-seat xian fills inside 郡.
 static func apply_zhou_jun_fills(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.MAP_H) -> void:
-	## Ensure fields exist even if bake missing.
 	for h0 in hexes:
 		var cell0: Dictionary = h0
 		if not cell0.has("zhou_id"):
 			cell0.zhou_id = ""
 		if not cell0.has("jun_id"):
 			cell0.jun_id = ""
-		cell0.xian_id = "" ## no Han county faces — do not revive Thiessen 县 paint
+		if not cell0.has("xian_id"):
+			cell0.xian_id = ""
 	if not FileAccess.file_exists(ZHOU_JUN_FILLS_META) or not FileAccess.file_exists(ZHOU_JUN_FILLS_BIN):
 		push_warning("zhou_jun_fills missing — 州/郡 modes stay empty")
 		return
@@ -178,6 +180,42 @@ static func apply_zhou_jun_fills(hexes: Array, w: int = Hex.MAP_W, h: int = Hex.
 			var ji: int = int(raw[off + 2]) | (int(raw[off + 3]) << 8)
 			hcell.zhou_id = str(zhou_table[zi]) if zi > 0 and zi < zhou_table.size() else ""
 			hcell.jun_id = str(jun_table[ji]) if ji > 0 and ji < jun_table.size() else ""
+	_apply_xian_fills(hexes, w, h)
+
+
+static func _apply_xian_fills(hexes: Array, w: int, h: int) -> void:
+	if not FileAccess.file_exists(XIAN_FILLS_META) or not FileAccess.file_exists(XIAN_FILLS_BIN):
+		return
+	var f := FileAccess.open(XIAN_FILLS_META, FileAccess.READ)
+	if f == null:
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	f.close()
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var meta: Dictionary = parsed
+	if int(meta.get("map_w", 0)) != w or int(meta.get("map_h", 0)) != h:
+		return
+	var table_any: Variant = meta.get("xian_table", [])
+	if typeof(table_any) != TYPE_ARRAY:
+		return
+	var xian_table: Array = table_any
+	var raw := FileAccess.get_file_as_bytes(XIAN_FILLS_BIN)
+	if raw.size() != w * h * 2:
+		push_warning("xian_fills.bin size %d != %d" % [raw.size(), w * h * 2])
+		return
+	for row in h:
+		for col in w:
+			var idx := row * w + col
+			if idx >= hexes.size():
+				continue
+			var hcell: Dictionary = hexes[idx]
+			if str(hcell.get("terrain", "")) == "water":
+				hcell.xian_id = ""
+				continue
+			var off := idx * 2
+			var xi: int = int(raw[off]) | (int(raw[off + 1]) << 8)
+			hcell.xian_id = str(xian_table[xi]) if xi > 0 and xi < xian_table.size() else ""
 
 
 static func _disk(center: Vector2i, radius: int) -> Array[Vector2i]:

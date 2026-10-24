@@ -17,7 +17,7 @@ const MARK_ZHOU := Color(0.75, 0.15, 0.12, 0.95)
 const MARK_JUN := Color(0.12, 0.22, 0.55, 0.92)
 const MARK_XIAN := Color(0.12, 0.12, 0.10, 0.88)
 const DRAW_MAP_MARKERS := false
-const EMPTY_ADMIN_HINT := "行政点模式（面待 Sinica 数字化）；底图可对照"
+const EMPTY_ADMIN_HINT := "本区无行政面；点标记 + 底图可对照"
 const ADMIN_POINTS_PATH := "res://data/admin_points.json"
 
 ## Display modes (buttons): zhou | jun | xian | terrain
@@ -136,7 +136,13 @@ func set_lod(_new_lod: String) -> void:
 
 ## True when 州/郡 polygon fills exist (县 mode always false — seats only).
 func has_xian_fills() -> bool:
-	return _has_admin_fills
+	## True when 县 mode has face paint (not merely seats).
+	if world == null or display_mode != MODE_XIAN:
+		return false
+	for h in world.hexes:
+		if str(h.get("xian_id", "")) != "":
+			return true
+	return false
 
 
 func has_admin_fills() -> bool:
@@ -224,13 +230,16 @@ func _admin_id_of(h: Dictionary) -> String:
 		MODE_JUN:
 			return str(h.get("jun_id", ""))
 		MODE_XIAN:
-			return "" ## no county faces
+			return str(h.get("xian_id", ""))
 		_:
 			return ""
 
 
 func _admin_name_of(h: Dictionary) -> String:
-	return _admin_id_of(h)
+	var aid := _admin_id_of(h)
+	if display_mode == MODE_XIAN and aid != "":
+		return CountiesRoster.name_of(aid)
+	return aid
 
 
 func _tint_for_admin_id(aid: String) -> Color:
@@ -267,11 +276,6 @@ func _color_for_hex(h: Dictionary) -> Color:
 		var tc := _terrain_color(h)
 		tc.a = a
 		return tc
-	## 县 mode: no county faces — gray land + seat marks only.
-	if display_mode == MODE_XIAN:
-		var g := UNASSIGNED_GRAY
-		g.a = a * 0.55
-		return g
 	if not _has_admin_fills:
 		var g2 := UNASSIGNED_GRAY
 		g2.a = a * 0.45
@@ -290,7 +294,7 @@ func _rebuild_color_caches() -> void:
 	if world == null:
 		return
 	_has_admin_fills = false
-	if display_mode == MODE_ZHOU or display_mode == MODE_JUN:
+	if display_mode == MODE_ZHOU or display_mode == MODE_JUN or display_mode == MODE_XIAN:
 		for h in world.hexes:
 			if str(h.get("terrain", "")) == "water":
 				continue
@@ -299,8 +303,7 @@ func _rebuild_color_caches() -> void:
 				break
 	var n := world.hexes.size()
 	_fill_hex.resize(n)
-	## Fast path: empty admin + terrain + 县 modes — still apply underlay land alpha.
-	if display_mode == MODE_TERRAIN or display_mode == MODE_XIAN or not _has_admin_fills:
+	if display_mode == MODE_TERRAIN or not _has_admin_fills:
 		for i in n:
 			_fill_hex[i] = _color_for_hex(world.hexes[i])
 		return
@@ -310,7 +313,10 @@ func _rebuild_color_caches() -> void:
 
 func _rebuild_admin_labels() -> void:
 	_admin_labels.clear()
-	if world == null or display_mode == MODE_TERRAIN or display_mode == MODE_XIAN or not _has_admin_fills:
+	if world == null or display_mode == MODE_TERRAIN or not _has_admin_fills:
+		return
+	## Skip dense 县 name centroids — points carry 县 labels.
+	if display_mode == MODE_XIAN:
 		return
 	## Accumulate pixel centroids per 州/郡 id.
 	var acc: Dictionary = {} ## id -> {name, sum: Vector2, n: int}

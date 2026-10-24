@@ -300,9 +300,9 @@ func _set_display_mode(mode: String) -> void:
 	_update_empty_admin_hint()
 	if mode == "xian":
 		var seats_n: int = CountiesRoster.seat_count()
-		_push_log("县模式：县治点 %d（无县域面）" % seats_n)
+		_push_log("县模式：县治点 + 郡内最近邻面")
 	elif mode != "terrain" and not map_view.has_admin_fills():
-		_push_log("州/郡：行政点模式（面待 Sinica）；底图可对照")
+		_push_log("州/郡：无面覆盖；行政点 + 底图可对照")
 	_refresh_hud()
 
 
