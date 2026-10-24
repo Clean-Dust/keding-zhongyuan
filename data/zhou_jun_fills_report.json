@@ -1,15 +1,15 @@
 {
   "stats": {
     "land": 143831,
-    "zhou_filled": 82941,
-    "jun_filled": 82941,
-    "xian_filled": 81426,
+    "zhou_filled": 72998,
+    "jun_filled": 72998,
+    "xian_filled": 71483,
     "zhou_units": 14,
     "jun_units": 134
   },
   "zhou_hex_counts": {
     "凉州": 9345,
-    "幽州": 6856,
+    "幽州": 2756,
     "冀州": 2644,
     "并州": 1874,
     "兖州": 8729,
@@ -21,9 +21,13 @@
     "益州": 14363,
     "荆州": 12409,
     "扬州": 6702,
-    "交州": 9152
+    "交州": 3309
   },
-  "note": "豫/司/兖 interior voids filled (incl. non-beige ink/river); 益州 west follows inland purple wall; no sea",
+  "note": "交州/幽州 clipped to primary-sheet coastline; other 州 unchanged; 916 县",
+  "coast_clip_removed": {
+    "交州": 5738,
+    "幽州": 4031
+  },
   "zhou_table": [
     "",
     "交州",

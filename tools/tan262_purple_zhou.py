@@ -71,13 +71,101 @@ def purple_mask(arr: np.ndarray) -> np.ndarray:
     return ((purple | violet).astype(np.uint8)) * 255
 
 
-def sheet_land(arr: np.ndarray, wall: np.ndarray) -> np.ndarray:
+def sheet_sea(arr: np.ndarray) -> np.ndarray:
+    """Blue sea ink on a Tan-262 分幅 sheet (bool). Used for land pockets."""
     lum = arr.mean(axis=2)
     sea = (arr[:, :, 2] > arr[:, :, 0] + 12) & (arr[:, :, 2] > arr[:, :, 1] + 8) & (lum < 210)
     sea |= (arr[:, :, 2] > 90) & (arr[:, :, 2] > arr[:, :, 0]) & (arr[:, :, 2] > arr[:, :, 1]) & (lum < 180)
+    return sea
+
+
+def sheet_sea_coast(arr: np.ndarray) -> np.ndarray:
+    """Broader sea mask for coastline clipping (includes shelf / cyan water)."""
+    r = arr[:, :, 0].astype(np.float32)
+    g = arr[:, :, 1].astype(np.float32)
+    b = arr[:, :, 2].astype(np.float32)
+    lum = (r + g + b) / 3.0
+    sea = sheet_sea(arr)
+    sea |= (b > 70) & (b > r) & (b > g) & (lum < 200)
+    sea |= (b > r + 10) & (g > r + 5) & (lum < 190) & (b > 80)
+    return sea
+
+
+def sheet_land(arr: np.ndarray, wall: np.ndarray) -> np.ndarray:
+    lum = arr.mean(axis=2)
+    sea = sheet_sea(arr)
     paper = lum > 235
     black = lum < 40
     return (~wall.astype(bool)) & (~sea) & (~paper) & (~black)
+
+
+# Coastal 州 whose primary sheet paints open sea — clip hex fills to sheet coastline.
+COAST_CLIP_ZHOU = {
+    "交州": "03-jiaozhou.jpg",
+    "幽州": "12-youzhou.jpg",
+}
+
+
+def rasterize_sheet_sea_hex(path: Path, g: dict, scale: float) -> np.ndarray:
+    """500² mask of hexes that fall on sheet sea ink."""
+    im = np.array(Image.open(path).convert("RGB"))
+    small = cv2.resize(
+        im, (max(1, int(im.shape[1] * scale)), max(1, int(im.shape[0] * scale))), interpolation=cv2.INTER_AREA
+    )
+    sea = sheet_sea_coast(small).astype(np.uint8)
+    # Dilate so shoreline-straddling / upsampled hexes stay sea-clipped
+    sea = cv2.dilate(sea, np.ones((5, 5), np.uint8), iterations=2)
+    out = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
+    ys, xs = np.where(sea > 0)
+    for y, x in zip(ys, xs):
+        lon = g["lon_a"] * (x / scale) + g["lon_b"]
+        lat = g["lat_c"] * (y / scale) + g["lat_d"]
+        col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W)
+        row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H)
+        if 0 <= col < MAP_W and 0 <= row < MAP_H:
+            out[row, col] = 1
+    # Also mark hexes whose 3×3 neighborhood is mostly sheet-sea (coast fringe)
+    if out.any():
+        near = cv2.dilate(out, np.ones((3, 3), np.uint8), iterations=1)
+        # count sea neighbors
+        sea_n = cv2.filter2D(out.astype(np.float32), -1, np.ones((3, 3), np.float32))
+        out = ((out > 0) | (sea_n >= 5)).astype(np.uint8)
+        _ = near  # kept for clarity / future land-gate
+    return out
+
+
+def clip_zhou_to_sheet_coast(
+    hex_zhou: np.ndarray,
+    zhou_index: dict[str, int],
+    sheets: Path,
+    georef: dict,
+    scale: float = 0.5,
+) -> dict[str, int]:
+    """Clear 交州/幽州 hexes that land on their primary sheet's sea. Other 州 untouched."""
+    removed: dict[str, int] = {}
+    for zname, sheet_name in COAST_CLIP_ZHOU.items():
+        zid = zhou_index.get(zname)
+        if not zid:
+            continue
+        g = georef.get(sheet_name)
+        path = sheets / sheet_name
+        if not g or not g.get("ok") or not path.is_file():
+            print(f"coast-clip skip {zname}: missing sheet/georef", flush=True)
+            continue
+        sea_hex = rasterize_sheet_sea_hex(path, g, scale)
+        sel = (hex_zhou == zid) & (sea_hex > 0)
+        n = int(sel.sum())
+        hex_zhou[sel] = 0
+        # Drop only tiny crumbs after sea cut; keep peninsulas / island fragments
+        m = (hex_zhou == zid).astype(np.uint8)
+        if m.any():
+            ncc, lab, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=4)
+            for ci in range(1, ncc):
+                if int(stats[ci, cv2.CC_STAT_AREA]) < 8:
+                    hex_zhou[lab == ci] = 0
+        removed[zname] = n
+        print(f"coast-clip {zname}: removed {n} sea hexes → {int((hex_zhou == zid).sum())}", flush=True)
+    return removed
 
 
 def underlay_beige_land(underlay: Path, coast: np.ndarray) -> np.ndarray:
@@ -590,6 +678,9 @@ def main() -> int:
             sel = lab_h == hi
             sel = sel & (land_ok > 0) & (hex_zhou == 0) & (~foreign)
             hex_zhou[sel] = zid
+
+    # 交州/幽州: drop hexes that fall on sheet sea ink (coastline clip)
+    clip_zhou_to_sheet_coast(hex_zhou, zhou_index, args.sheets, georef, args.scale)
 
     mxj = jun_votes.max(axis=0)
     hex_jun = np.where(mxj > 0, jun_votes.argmax(axis=0), 0).astype(np.uint16)
