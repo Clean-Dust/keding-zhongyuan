@@ -20,11 +20,11 @@
     "units": 98
   },
   "xian": {
-    "source": "nearest CHGIS 县治 inside 郡",
+    "source": "nearest Sinica ad0262 县治 inside 郡",
     "bin": "xian_fills.bin",
-    "units": 834
+    "units": 667
   },
-  "citation": "Academia Sinica CCTS ad0262; CHGIS seats/points for seeds",
+  "citation": "Academia Sinica CCTS ad0262 OCR labels (县); prior Sinica-traced 州/郡 faces",
   "fidelity_note": "Hex-center sample ~6.9km; raster ink digitize not cadastral",
   "supersedes": [
     "caa7e43 sinica-trace",
@@ -153,7 +153,7 @@
     "land": 170246,
     "zhou_filled": 52914,
     "jun_filled": 46620,
-    "xian_filled": 46620,
+    "xian_filled": 46591,
     "zhou_fill_rate_land": 0.3108,
     "jun_fill_rate_land": 0.2738,
     "zhou_units": 13,

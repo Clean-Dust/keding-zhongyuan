@@ -1,5 +1,93 @@
 {
-  "disabled": true,
-  "reason": "CHGIS has no Han-era county polygons; Thiessen guess removed. 县 mode = seats only.",
-  "see": "zhou_jun_fills_report.json / internal/chgis-zhou-jun.md"
+  "xian_units": 667,
+  "xian_filled": 46591,
+  "jun_filled": 46620,
+  "fill_rate_vs_jun": 0.9994,
+  "top_xian": [
+    [
+      "xian:交州/南海郡/龙川",
+      1295
+    ],
+    [
+      "xian:凉州/武威郡/宣威",
+      1187
+    ],
+    [
+      "xian:益州/巴郡/江州",
+      1145
+    ],
+    [
+      "xian:荆州/武陵郡/舞阳",
+      836
+    ],
+    [
+      "xian:益州/越巂郡/邛都",
+      665
+    ],
+    [
+      "xian:交州/南海郡/番禺",
+      642
+    ],
+    [
+      "xian:益州/蜀郡属国/旄牛",
+      520
+    ],
+    [
+      "xian:荆州/零陵郡/始安",
+      439
+    ],
+    [
+      "xian:益州/犍为属国/南广",
+      407
+    ],
+    [
+      "xian:荆州/武陵郡/迁陵",
+      390
+    ],
+    [
+      "xian:荆州/零陵郡/都梁",
+      360
+    ],
+    [
+      "xian:交州/合浦郡/合浦",
+      333
+    ],
+    [
+      "xian:凉州/金城郡/枝阳",
+      313
+    ],
+    [
+      "xian:扬州/丹阳郡/葛阳",
+      311
+    ],
+    [
+      "xian:荆州/武陵郡/充",
+      311
+    ],
+    [
+      "xian:荆州/江夏郡/邾",
+      307
+    ],
+    [
+      "xian:凉州/武都郡/武都",
+      297
+    ],
+    [
+      "xian:荆州/桂阳郡/浈阳",
+      290
+    ],
+    [
+      "xian:益州/犍为属国/堂琅",
+      281
+    ],
+    [
+      "xian:荆州/武陵郡/沅陵",
+      265
+    ]
+  ],
+  "juns_without_seats": [
+    "任城国",
+    "济北国",
+    "郁林郡"
+  ]
 }
