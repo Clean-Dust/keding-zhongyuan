@@ -9,13 +9,13 @@
     "lat_max": 42.8
   },
   "zhou": {
-    "source": "Tan-262 purple 州 boundaries (distance-limited; no all-coast fill)",
-    "method": "purple-ink seal + nearest 州 seed; hex splat",
+    "source": "Tan-262 purple 州 outline polygons",
+    "method": "purple pocket union → outer contour → hex rasterize; largest CC per 州",
     "units": 14
   },
   "jun": {
-    "source": "Tan-262 郡治 seats",
-    "method": "multi_source hex BFS inside parent 州 mask",
+    "source": "Tan-262 purple 郡 pockets + nearest 郡治 fill",
+    "method": "inner purple polygons inside parent 州; nearest 郡治 for gaps",
     "units": 134
   },
   "xian": {
@@ -24,7 +24,7 @@
     "units": 916
   },
   "citation": "Tan Qixiang 中国历史地图集 三国 分幅 (tan-262). Sinica fallback labels only where sheet blank.",
-  "fidelity_note": "Hex-center sample; purple 州 from 分幅, not longitude boxes.",
+  "fidelity_note": "Purple outline polygons; no seat-flood; no sheet JPEG texture.",
   "zhou_table": [
     "",
     "交州",
@@ -183,9 +183,9 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 143831,
-    "zhou_filled": 60829,
-    "jun_filled": 60829,
-    "xian_filled": 60017,
+    "zhou_filled": 75744,
+    "jun_filled": 75744,
+    "xian_filled": 74213,
     "zhou_units": 14,
     "jun_units": 134
   },

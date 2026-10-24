@@ -1,25 +1,26 @@
 #!/usr/bin/env python3
-"""Build 州 hex fills from purple boundaries on Tan-262 分幅 sheets.
+"""Build 州/郡 hex fills by tracing purple outlines on Tan-262 分幅 sheets.
 
-Per sheet (georeferenced by printed degree grid):
-  1. Detect purple 州 walls.
-  2. Flood from that sheet's primary 州/郡 seats through sheet land until
-     purple OR a max distance — never the whole sheet rectangle.
-  3. Splat onto the 500×500 hex grid only on real land (coast ∧ ¬underlay-sea).
+No seat-flood across the map. For each sheet (georeferenced by printed grid):
+  1. Detect purple boundary ink and seal small gaps.
+  2. Land pockets between purple lines → candidate regions.
+  3. Label pockets from 州/郡 seats printed inside (sheet-primary 州 only).
+  4. If several primary 州 share one pocket, split by nearest seat inside it.
+  5. Union → outer contour → lon/lat polygon → rasterize onto hex (beige land).
+  6. 郡: inner purple pockets inside the parent 州 polygon.
 
-Does NOT paint ocean, 羌胡/鲜卑, or empty west outside purple reach.
-No sheet JPEG texture in the repo.
+JPEGs stay in the agent store; only hex bins/json go to git.
 """
 from __future__ import annotations
 
 import argparse
 import json
-from collections import Counter, defaultdict, deque
+from collections import Counter, defaultdict
 from pathlib import Path
 
+import cv2
 import numpy as np
 from PIL import Image
-from scipy import ndimage
 
 LON_MIN, LON_MAX = 94.662, 130.0
 LAT_MIN, LAT_MAX = 15.55, 42.8
@@ -42,18 +43,6 @@ CANON = {
     "并州",
 }
 
-ALIAS = {
-    "司隶": "司州",
-    "蜀郡益州": "益州",
-    "燕国幽州": "幽州",
-    "扶柳冀州": "冀州",
-    "南郡荆州": "荆州",
-    "湖北荆州": "荆州",
-    "丹阳郡扬州": "扬州",
-    "下邳郡徐州": "徐州",
-    "齐国州": "青州",
-}
-
 SHEET_PRIMARY = {
     "03-jiaozhou.jpg": ("交州",),
     "04-yangzhou-wu.jpg": ("扬州",),
@@ -73,229 +62,306 @@ SHEET_PRIMARY = {
 SKIP = {"01-overview.jpg", "02-xiyu.jpg", "08-xianbei.jpg"}
 
 
-def pix_to_lonlat(g: dict, x: float, y: float) -> tuple[float, float]:
-    return float(g["lon_a"] * x + g["lon_b"]), float(g["lat_c"] * y + g["lat_d"])
-
-
-def lonlat_to_pix(g: dict, lon: float, lat: float, scale: float) -> tuple[float, float]:
-    x = (lon - g["lon_b"]) / g["lon_a"] * scale
-    y = (lat - g["lat_d"]) / g["lat_c"] * scale
-    return x, y
-
-
-def lonlat_to_hex(lon: float, lat: float) -> tuple[int, int]:
-    col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W)
-    row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H)
-    return col, row
-
-
-def purple_mask(im: np.ndarray) -> np.ndarray:
-    r = im[:, :, 0].astype(np.float32)
-    g = im[:, :, 1].astype(np.float32)
-    b = im[:, :, 2].astype(np.float32)
+def purple_mask(arr: np.ndarray) -> np.ndarray:
+    r = arr[:, :, 0].astype(np.float32)
+    g = arr[:, :, 1].astype(np.float32)
+    b = arr[:, :, 2].astype(np.float32)
     purple = (r > 90) & (b > 90) & (g < r * 0.85) & (g < b * 0.9) & ((r + b) > 1.6 * g + 40)
     violet = (r > 70) & (b > 100) & (b > g + 25) & (r > g + 10) & (r + g + b < 520)
-    return purple | violet
+    return ((purple | violet).astype(np.uint8)) * 255
 
 
-def sheet_land_and_wall(arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    pur = purple_mask(arr)
-    wall = ndimage.binary_dilation(pur, iterations=2)
-    wall = ndimage.binary_closing(wall, iterations=3)
+def sheet_land(arr: np.ndarray, wall: np.ndarray) -> np.ndarray:
     lum = arr.mean(axis=2)
-    sea = (
-        ((arr[:, :, 2] > arr[:, :, 0] + 12) & (arr[:, :, 2] > arr[:, :, 1] + 8) & (lum < 210))
-        | ((arr[:, :, 2] > 90) & (arr[:, :, 2] > arr[:, :, 0]) & (arr[:, :, 2] > arr[:, :, 1]) & (lum < 180))
-    )
+    sea = (arr[:, :, 2] > arr[:, :, 0] + 12) & (arr[:, :, 2] > arr[:, :, 1] + 8) & (lum < 210)
+    sea |= (arr[:, :, 2] > 90) & (arr[:, :, 2] > arr[:, :, 0]) & (arr[:, :, 2] > arr[:, :, 1]) & (lum < 180)
     paper = lum > 235
-    ink_black = lum < 40
-    land = (~wall) & (~sea) & (~paper) & (~ink_black)
-    return land, wall
+    black = lum < 40
+    return (~wall.astype(bool)) & (~sea) & (~paper) & (~black)
 
 
-def underlay_land_mask(underlay: Path, coast: np.ndarray) -> np.ndarray:
-    """Beige Sinica land only — never ocean / dark water."""
+def underlay_beige_land(underlay: Path, coast: np.ndarray) -> np.ndarray:
     img = np.array(Image.open(underlay).convert("RGB").resize((MAP_W, MAP_H), Image.Resampling.BILINEAR))
     r = img[:, :, 0].astype(np.float32)
     g = img[:, :, 1].astype(np.float32)
     b = img[:, :, 2].astype(np.float32)
     lum = (r + g + b) / 3.0
-    # Sinica land plate is warm beige; sea is dark navy
     beige = (lum > 125) & (lum < 235) & (r > 145) & (g > 135) & (r + g > b * 1.55)
     sea = (lum < 110) | ((b > r + 15) & (b > g + 10) & (lum < 160))
-    land = (coast > 0) & beige & (~sea)
-    return land.astype(np.uint8)
+    return ((coast > 0) & beige & (~sea)).astype(np.uint8)
 
 
-def flood_from_seeds(
-    land: np.ndarray,
-    seeds: list[tuple[int, int, str]],
-    max_dist: int,
-) -> dict[str, np.ndarray]:
-    """Flood each seed through land; stop at purple (removed from land) or max_dist."""
-    h, w = land.shape
-    owner = np.full((h, w), -1, dtype=np.int16)
-    dist = np.full((h, w), 10**9, dtype=np.int32)
-    names: list[str] = []
-    name_to_i: dict[str, int] = {}
-    q: deque[tuple[int, int, int, int]] = deque()
+def seal_purple(pur: np.ndarray) -> np.ndarray:
+    wall = cv2.morphologyEx(pur, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=3)
+    wall = cv2.dilate(wall, np.ones((3, 3), np.uint8), iterations=1)
+    return wall
 
-    def nid(name: str) -> int:
-        if name not in name_to_i:
-            name_to_i[name] = len(names)
-            names.append(name)
-        return name_to_i[name]
 
-    for sx, sy, name in seeds:
-        if not (0 <= sx < w and 0 <= sy < h):
+def contour_to_lonlat(contour: np.ndarray, g: dict, scale: float, simplify_eps: float = 2.0) -> list[tuple[float, float]]:
+    if contour is None or len(contour) < 3:
+        return []
+    approx = cv2.approxPolyDP(contour, simplify_eps, True)
+    ring: list[tuple[float, float]] = []
+    for pt in approx.reshape(-1, 2):
+        x = float(pt[0]) / scale
+        y = float(pt[1]) / scale
+        lon = g["lon_a"] * x + g["lon_b"]
+        lat = g["lat_c"] * y + g["lat_d"]
+        ring.append((lon, lat))
+    if ring and ring[0] != ring[-1]:
+        ring.append(ring[0])
+    return ring
+
+
+def rasterize_polygon_votes(
+    ring: list[tuple[float, float]], votes: np.ndarray, zid: int, land_ok: np.ndarray, weight: int = 1
+) -> int:
+    """Add polygon coverage into votes[zid] (uint16 stack)."""
+    if len(ring) < 4 or zid <= 0:
+        return 0
+    pts = [
+        [
+            (lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W,
+            (LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H,
+        ]
+        for lon, lat in ring
+    ]
+    mask = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
+    cv2.fillPoly(mask, [np.array(pts, dtype=np.int32)], 1)
+    sel = (mask > 0) & (land_ok > 0)
+    votes[zid][sel] = np.minimum(votes[zid][sel] + weight, 65535)
+    return int(sel.sum())
+
+
+def largest_connected(mask: np.ndarray) -> np.ndarray:
+    n, lab, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), connectivity=4)
+    if n <= 1:
+        return mask
+    best = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    return lab == best
+
+
+def _fill_holes_binary(mask: np.ndarray) -> np.ndarray:
+    """Fill interior holes of a binary mask (uint8 0/1)."""
+    m = (mask > 0).astype(np.uint8)
+    if not m.any():
+        return m
+    inv = (m == 0).astype(np.uint8) * 255
+    ff = inv.copy()
+    cv2.floodFill(ff, np.zeros((m.shape[0] + 2, m.shape[1] + 2), np.uint8), (0, 0), 128)
+    holes = ff == 255
+    return (m | holes).astype(np.uint8)
+
+
+def keep_largest_per_id(
+    grid: np.ndarray, land_ok: np.ndarray | None = None, close_px: int = 3
+) -> np.ndarray:
+    """One solid connected region per id (land-only close + hole fill + largest CC)."""
+    out = np.zeros_like(grid)
+    k = None
+    if close_px > 0:
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_px * 2 + 1, close_px * 2 + 1))
+    for vid0 in np.unique(grid):
+        vid = int(vid0)
+        if vid == 0:
             continue
-        if not land[sy, sx]:
-            found = False
-            for rad in range(1, 35):
-                for dy in range(-rad, rad + 1):
-                    for dx in range(-rad, rad + 1):
-                        nx, ny = sx + dx, sy + dy
-                        if 0 <= nx < w and 0 <= ny < h and land[ny, nx]:
-                            sx, sy = nx, ny
-                            found = True
-                            break
-                    if found:
-                        break
-                if found:
-                    break
-            if not found:
-                continue
-        i = nid(name)
-        if dist[sy, sx] <= 0:
+        m = (grid == vid).astype(np.uint8)
+        if land_ok is not None:
+            m = ((m > 0) & (land_ok > 0)).astype(np.uint8)
+        if not m.any():
             continue
-        owner[sy, sx] = i
-        dist[sy, sx] = 0
-        q.append((sx, sy, i, 0))
-
-    while q:
-        x, y, i, d = q.popleft()
-        if d >= max_dist:
+        if k is not None:
+            # morph close constrained to land: dilate∩land, then erode; keeps solid fills
+            dil = cv2.dilate(m, k, iterations=1)
+            if land_ok is not None:
+                dil = dil & (land_ok > 0).astype(np.uint8)
+            m = cv2.erode(dil, k, iterations=1)
+            # restore original core so thin peninsulas aren't erased, then drop islands later
+            core = (grid == vid).astype(np.uint8)
+            if land_ok is not None:
+                core = core & (land_ok > 0).astype(np.uint8)
+            m = np.maximum(m, core)
+        m = _fill_holes_binary(m)
+        if land_ok is not None:
+            m = m & (land_ok > 0).astype(np.uint8)
+        n, lab, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=4)
+        if n <= 1:
             continue
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            nx, ny = x + dx, y + dy
-            if not (0 <= nx < w and 0 <= ny < h):
-                continue
-            if not land[ny, nx]:
-                continue
-            nd = d + 1
-            if nd >= dist[ny, nx] or nd > max_dist:
-                continue
-            owner[ny, nx] = i
-            dist[ny, nx] = nd
-            q.append((nx, ny, i, nd))
-
-    return {name: owner == i for name, i in name_to_i.items()}
-
-
-def sheet_zhou_masks(
-    path: Path,
-    g: dict,
-    seeds_ll: list[tuple[str, float, float]],
-    scale: float,
-    max_dist: int,
-) -> dict[str, np.ndarray]:
-    im_full = Image.open(path).convert("RGB")
-    im = im_full.resize(
-        (max(1, int(im_full.width * scale)), max(1, int(im_full.height * scale))),
-        Image.Resampling.BILINEAR,
-    )
-    arr = np.asarray(im)
-    h, w, _ = arr.shape
-    land, _wall = sheet_land_and_wall(arr)
-    primary = SHEET_PRIMARY.get(path.name, ())
-
-    seeds_xy: list[tuple[int, int, str]] = []
-    for name, lon, lat in seeds_ll:
-        if name not in CANON:
-            continue
-        if primary and name not in primary:
-            continue
-        x, y = lonlat_to_pix(g, lon, lat, scale)
-        if 0 <= x < w and 0 <= y < h:
-            seeds_xy.append((int(x), int(y), name))
-
-    have = {n for _, _, n in seeds_xy}
-    for pname in primary:
-        if pname not in have:
-            # plant at centroid of on-sheet seeds of any kind, else center
-            seeds_xy.append((w // 2, h // 2, pname))
-
-    return flood_from_seeds(land, seeds_xy, max_dist=max_dist)
-
-
-def splat_to_hex(
-    masks: dict[str, np.ndarray],
-    g: dict,
-    scale: float,
-    votes: dict[str, np.ndarray],
-    land_ok: np.ndarray,
-    weight: int = 1,
-) -> None:
-    for name, mask in masks.items():
-        ys, xs = np.where(mask)
-        for y, x in zip(ys[::2], xs[::2]):
-            lon, lat = pix_to_lonlat(g, x / scale, y / scale)
-            if not (LON_MIN <= lon <= LON_MAX and LAT_MIN <= lat <= LAT_MAX):
-                continue
-            col, row = lonlat_to_hex(lon, lat)
-            if 0 <= col < MAP_W and 0 <= row < MAP_H and land_ok[row, col] > 0:
-                votes[name][row, col] += weight
-
-
-def fill_small_interior_holes(hex_zhou: np.ndarray, land_ok: np.ndarray, max_hole: int = 40) -> np.ndarray:
-    out = hex_zhou.copy()
-    empty = (out == 0) & (land_ok > 0)
-    labeled, n = ndimage.label(empty)
-    for cid in range(1, n + 1):
-        ys, xs = np.where(labeled == cid)
-        if len(ys) == 0 or len(ys) > max_hole:
-            continue
-        neigh: set[int] = set()
-        edge = False
-        for y, x in zip(ys, xs):
-            if y in (0, MAP_H - 1) or x in (0, MAP_W - 1):
-                edge = True
-            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                ny, nx = y + dy, x + dx
-                if not (0 <= nx < MAP_W and 0 <= ny < MAP_H):
-                    edge = True
-                    continue
-                v = int(out[ny, nx])
-                if v:
-                    neigh.add(v)
-        if (not edge) and len(neigh) == 1:
-            out[labeled == cid] = next(iter(neigh))
+        best = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+        out[lab == best] = vid
     return out
 
 
-def collect_seeds(points_path: Path, labels_path: Path) -> list[tuple[str, float, float]]:
-    seeds: list[tuple[str, float, float]] = []
-    pts = json.loads(points_path.read_text())
-    for z in pts["zhou"]:
-        if z["zhou"] in CANON:
-            seeds.append((z["zhou"], z["lon"], z["lat"]))
-    for j in pts["jun"]:
-        z = j.get("zhou", "")
-        if z in CANON:
-            seeds.append((z, j["lon"], j["lat"]))
-    if labels_path.is_file():
-        for l in json.loads(labels_path.read_text()).get("labels", []):
-            if l.get("kind") != "zhou" or l.get("conf", 0) < 0.7:
-                continue
-            raw = l["text"]
-            name = ALIAS.get(raw, raw)
-            for c in CANON:
-                if raw.endswith(c) or c in raw:
-                    name = c
-                    break
-            if name in CANON:
-                seeds.append((name, l["lon"], l["lat"]))
-    return seeds
+def _nudge_to_land(lab: np.ndarray, x: float, y: float, max_r: int = 50) -> tuple[int, int, int] | None:
+    h, w = lab.shape
+    if not (0 <= x < w and 0 <= y < h):
+        return None
+    ix, iy = int(x), int(y)
+    if lab[iy, ix] > 0:
+        return int(lab[iy, ix]), ix, iy
+    for rad in range(1, max_r + 1):
+        for dy in range(-rad, rad + 1):
+            for dx in range(-rad, rad + 1):
+                nx, ny = ix + dx, iy + dy
+                if 0 <= nx < w and 0 <= ny < h and lab[ny, nx] > 0:
+                    return int(lab[ny, nx]), nx, ny
+    return None
+
+
+def sheet_zhou_polygons(
+    path: Path,
+    g: dict,
+    zhou_seats: list[tuple[str, float, float]],
+    jun_seats: list[tuple[str, str, float, float]],
+    xian_seats: list[tuple[str, float, float]],
+    scale: float,
+) -> dict[str, list[tuple[float, float]]]:
+    """Primary-州 lon/lat rings from purple pockets on this sheet."""
+    im = np.array(Image.open(path).convert("RGB"))
+    small = cv2.resize(
+        im, (max(1, int(im.shape[1] * scale)), max(1, int(im.shape[0] * scale))), interpolation=cv2.INTER_AREA
+    )
+    pur = purple_mask(small)
+    wall = seal_purple(pur)
+    land = sheet_land(small, wall)
+    h, w = land.shape
+    _n, lab, stats, _ = cv2.connectedComponentsWithStats(land.astype(np.uint8), connectivity=4)
+
+    primary = SHEET_PRIMARY.get(path.name, ())
+    if not primary:
+        return {}
+
+    def ll_pix(lon: float, lat: float) -> tuple[float, float]:
+        return (lon - g["lon_b"]) / g["lon_a"] * scale, (lat - g["lat_d"]) / g["lat_c"] * scale
+
+    comp_seats: dict[int, dict[str, list[tuple[int, int]]]] = defaultdict(lambda: defaultdict(list))
+    for name, lon, lat in zhou_seats:
+        if name not in primary:
+            continue
+        hit = _nudge_to_land(lab, *ll_pix(lon, lat), max_r=60)
+        if hit:
+            cid, ix, iy = hit
+            comp_seats[cid][name].append((ix, iy))
+    for _jn, zname, lon, lat in jun_seats:
+        if zname not in primary:
+            continue
+        hit = _nudge_to_land(lab, *ll_pix(lon, lat), max_r=60)
+        if hit:
+            cid, ix, iy = hit
+            comp_seats[cid][zname].append((ix, iy))
+    # 县 seats help sheets where 郡治 sit on purple ink (e.g. 益州南)
+    for zname, lon, lat in xian_seats:
+        if zname not in primary:
+            continue
+        hit = _nudge_to_land(lab, *ll_pix(lon, lat), max_r=40)
+        if hit:
+            cid, ix, iy = hit
+            if stats[cid, cv2.CC_STAT_AREA] >= 150:
+                comp_seats[cid][zname].append((ix, iy))
+
+    masks: dict[str, np.ndarray] = {p: np.zeros((h, w), dtype=np.uint8) for p in primary}
+    for cid, by_z in comp_seats.items():
+        if stats[cid, cv2.CC_STAT_AREA] < 150:
+            continue
+        names = [zn for zn in primary if by_z.get(zn)]
+        if not names:
+            continue
+        ys, xs = np.where(lab == cid)
+        if len(names) == 1:
+            masks[names[0]][ys, xs] = 1
+            continue
+        seeds = {zn: by_z[zn] for zn in names}
+        for y, x in zip(ys, xs):
+            best_zn, best_d = names[0], 1e18
+            for zn, pts_ in seeds.items():
+                for sx, sy in pts_:
+                    d = (x - sx) ** 2 + (y - sy) ** 2
+                    if d < best_d:
+                        best_d, best_zn = d, zn
+            masks[best_zn][y, x] = 1
+
+    rings: dict[str, list[tuple[float, float]]] = {}
+    for zname, union in masks.items():
+        if int(union.sum()) < 300:
+            continue
+        k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17))
+        union = cv2.morphologyEx(union, cv2.MORPH_CLOSE, k, iterations=2)
+        union = largest_connected(union).astype(np.uint8)
+        union = cv2.morphologyEx(union, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8), iterations=1)
+        cnts, _ = cv2.findContours(union, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts:
+            continue
+        cnt = max(cnts, key=cv2.contourArea)
+        if cv2.contourArea(cnt) < 400:
+            continue
+        ring = contour_to_lonlat(cnt, g, scale, simplify_eps=2.5)
+        if len(ring) >= 4:
+            rings[zname] = ring
+    return rings
+
+
+def sheet_jun_polygons(
+    path: Path,
+    g: dict,
+    zhou_ring: dict[str, list[tuple[float, float]]],
+    jun_seats: list[tuple[str, str, float, float]],
+    scale: float,
+) -> dict[str, list[tuple[float, float]]]:
+    im = np.array(Image.open(path).convert("RGB"))
+    small = cv2.resize(
+        im, (max(1, int(im.shape[1] * scale)), max(1, int(im.shape[0] * scale))), interpolation=cv2.INTER_AREA
+    )
+    pur = purple_mask(small)
+    wall = cv2.morphologyEx(pur, cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8), iterations=2)
+    wall = cv2.dilate(wall, np.ones((2, 2), np.uint8), iterations=1)
+    land = sheet_land(small, wall)
+    h, w = land.shape
+
+    zhou_mask = {zn: np.zeros((h, w), dtype=np.uint8) for zn in zhou_ring}
+    for zn, ring in zhou_ring.items():
+        pts = []
+        for lon, lat in ring:
+            x = (lon - g["lon_b"]) / g["lon_a"] * scale
+            y = (lat - g["lat_d"]) / g["lat_c"] * scale
+            pts.append([x, y])
+        if len(pts) >= 3:
+            cv2.fillPoly(zhou_mask[zn], [np.array(pts, dtype=np.int32)], 1)
+
+    _n, lab, stats, _ = cv2.connectedComponentsWithStats(land.astype(np.uint8), connectivity=4)
+    primary = set(SHEET_PRIMARY.get(path.name, ()))
+
+    def ll_pix(lon: float, lat: float) -> tuple[float, float]:
+        return (lon - g["lon_b"]) / g["lon_a"] * scale, (lat - g["lat_d"]) / g["lat_c"] * scale
+
+    assigned: dict[int, tuple[str, str]] = {}
+    for jname, zname, lon, lat in jun_seats:
+        if primary and zname not in primary:
+            continue
+        hit = _nudge_to_land(lab, *ll_pix(lon, lat), max_r=40)
+        if not hit:
+            continue
+        cid, ix, iy = hit
+        if stats[cid, cv2.CC_STAT_AREA] < 80:
+            continue
+        if zname in zhou_mask and zhou_mask[zname].sum() > 0 and zhou_mask[zname][iy, ix] == 0:
+            continue
+        assigned[cid] = (jname, zname)
+
+    rings: dict[str, list[tuple[float, float]]] = {}
+    for cid, (jname, zname) in assigned.items():
+        m = (lab == cid).astype(np.uint8)
+        if zname in zhou_mask and zhou_mask[zname].sum() > 0:
+            m = m & zhou_mask[zname]
+        if m.sum() < 80:
+            continue
+        m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8), iterations=1)
+        cnts, _ = cv2.findContours(m, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not cnts:
+            continue
+        ring = contour_to_lonlat(max(cnts, key=cv2.contourArea), g, scale, simplify_eps=2.0)
+        if len(ring) >= 4:
+            rings[jname] = ring
+    return rings
 
 
 def main() -> int:
@@ -306,27 +372,61 @@ def main() -> int:
         default=Path("/cursor/stores/bc-98f6facd-822a-4e6f-badd-6fc0a5aa5ecf/media/tan-262"),
     )
     ap.add_argument("--georef", type=Path, default=Path("/tmp/tan262/georef/all_georef.json"))
-    ap.add_argument("--labels", type=Path, default=Path("/tmp/tan262/labels_all.json"))
     ap.add_argument("--points", type=Path, default=Path("data/admin_points.json"))
     ap.add_argument("--coast", type=Path, default=Path("data/coast_mask.bin"))
     ap.add_argument("--underlay", type=Path, default=Path("/tmp/sinica_ad0262_z8.jpg"))
     ap.add_argument("--fallback-underlay", type=Path, default=Path("data/sinica_ad0262_underlay.jpg"))
     ap.add_argument("--out-hex", type=Path, default=Path("/tmp/tan262/zhou_hex_votes.json"))
-    ap.add_argument("--scale", type=float, default=0.45)
-    # stops sheet-rectangle floods when purple is leaky; seats still bound extent
-    ap.add_argument("--max-dist", type=int, default=360)
+    ap.add_argument("--out-jun-hex", type=Path, default=Path("/tmp/tan262/jun_hex_votes.bin"))
+    ap.add_argument("--out-polygons", type=Path, default=Path("/tmp/tan262/zhou_polygons.json"))
+    ap.add_argument("--scale", type=float, default=0.5)
     args = ap.parse_args()
 
     georef = json.loads(args.georef.read_text())
+    pts = json.loads(args.points.read_text())
     coast = np.frombuffer(args.coast.read_bytes(), dtype=np.uint8).reshape(MAP_H, MAP_W)
     under = args.underlay if args.underlay.is_file() else args.fallback_underlay
-    land_ok = underlay_land_mask(under, coast)
-    print(f"land_ok={int(land_ok.sum())} (coast={int(coast.sum())})", flush=True)
+    land_ok = underlay_beige_land(under, coast)
+    Path("/tmp/tan262/land_ok.bin").write_bytes(land_ok.astype(np.uint8).tobytes())
+    print(f"land_ok={int(land_ok.sum())}", flush=True)
 
-    seeds = collect_seeds(args.points, args.labels)
-    print(f"州/郡 seeds: {len(seeds)} max_dist={args.max_dist}", flush=True)
+    zhou_seats = [(z["zhou"], z["lon"], z["lat"]) for z in pts["zhou"] if z["zhou"] in CANON]
+    jun_to_zhou = {j["jun"]: j["zhou"] for j in pts["jun"]}
+    jun_seats = [(j["jun"], j["zhou"], j["lon"], j["lat"]) for j in pts["jun"] if j["zhou"] in CANON]
+    xian_seats = [
+        (x["zhou"], x["lon"], x["lat"])
+        for x in pts["xian"]
+        if x.get("zhou") in CANON and "lon" in x and "lat" in x
+    ]
+    # some xian records may only have jun — map via jun_to_zhou
+    if not xian_seats:
+        xian_seats = [
+            (jun_to_zhou[x["jun"]], x["lon"], x["lat"])
+            for x in pts["xian"]
+            if x.get("jun") in jun_to_zhou and jun_to_zhou[x["jun"]] in CANON
+        ]
+    else:
+        # also add jun-mapped ones missing zhou field
+        for x in pts["xian"]:
+            if x.get("zhou") in CANON:
+                continue
+            if x.get("jun") in jun_to_zhou and jun_to_zhou[x["jun"]] in CANON:
+                xian_seats.append((jun_to_zhou[x["jun"]], x["lon"], x["lat"]))
 
-    votes: dict[str, np.ndarray] = defaultdict(lambda: np.zeros((MAP_H, MAP_W), dtype=np.uint16))
+    zhou_names = [""] + [z["zhou"] for z in pts["zhou"] if z["zhou"] in CANON]
+    zhou_index = {n: i for i, n in enumerate(zhou_names) if n}
+    jun_names = [""]
+    seen: set[str] = set()
+    for j in pts["jun"]:
+        if j["jun"] not in seen:
+            seen.add(j["jun"])
+            jun_names.append(j["jun"])
+    jun_index = {n: i for i, n in enumerate(jun_names) if n}
+
+    n_zhou = len(zhou_names)
+    zhou_votes = np.zeros((n_zhou, MAP_H, MAP_W), dtype=np.uint16)
+    jun_votes = np.zeros((len(jun_names), MAP_H, MAP_W), dtype=np.uint16)
+    poly_dump: dict[str, list] = {"zhou": {}, "jun": {}}
 
     for path in sorted(args.sheets.glob("*.jpg")):
         if path.name in SKIP:
@@ -335,76 +435,81 @@ def main() -> int:
         if not g or not g.get("ok"):
             print(f"skip {path.name}: no georef", flush=True)
             continue
-        print(f"purple-flood {path.name}", flush=True)
-        masks = sheet_zhou_masks(path, g, seeds, scale=args.scale, max_dist=args.max_dist)
-        print(
-            f"  pockets: {{{', '.join(f'{k}:{int(v.sum())}' for k,v in sorted(masks.items()))}}}",
-            flush=True,
-        )
-        splat_to_hex(masks, g, args.scale, votes, land_ok, weight=3)
+        print(f"polygon {path.name}", flush=True)
+        zrings = sheet_zhou_polygons(path, g, zhou_seats, jun_seats, xian_seats, args.scale)
+        print(f"  州 polygons: {list(zrings.keys())}", flush=True)
+        for zn, ring in zrings.items():
+            zid = zhou_index.get(zn)
+            if not zid:
+                continue
+            # primary sheet of a 州 weighs more
+            w = 3 if zn in SHEET_PRIMARY.get(path.name, ()) else 1
+            nset = rasterize_polygon_votes(ring, zhou_votes, zid, land_ok, weight=w)
+            poly_dump["zhou"].setdefault(zn, []).append({"sheet": path.name, "n_ring": len(ring), "hex": nset})
+            print(f"    {zn}: ring={len(ring)} hex+={nset}", flush=True)
 
-    names = sorted(votes.keys())
-    name_to_id = {n: i + 1 for i, n in enumerate(names)}
-    id_to_name = {i: n for n, i in name_to_id.items()}
-    hex_zhou = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
-    if names:
-        stack = np.stack([votes[n] for n in names], axis=0)
-        best = stack.argmax(axis=0)
-        mx = stack.max(axis=0)
-        hex_zhou = np.where(mx > 0, best + 1, 0).astype(np.uint8)
+        jrings = sheet_jun_polygons(path, g, zrings, jun_seats, args.scale)
+        for jn, ring in jrings.items():
+            jid = jun_index.get(jn)
+            if not jid:
+                continue
+            pts_xy = [
+                [
+                    (lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W,
+                    (LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H,
+                ]
+                for lon, lat in ring
+            ]
+            if len(pts_xy) < 3:
+                continue
+            mask = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
+            cv2.fillPoly(mask, [np.array(pts_xy, dtype=np.int32)], 1)
+            sel = (mask > 0) & (land_ok > 0)
+            jun_votes[jid][sel] = np.minimum(jun_votes[jid][sel] + 1, 65535)
+            poly_dump["jun"].setdefault(jn, []).append({"sheet": path.name, "hex": int(sel.sum())})
 
+    # Winner-take-all 州
+    mx = zhou_votes.max(axis=0)
+    hex_zhou = np.where(mx > 0, zhou_votes.argmax(axis=0), 0).astype(np.uint8)
     hex_zhou[land_ok == 0] = 0
-    # Fill only tiny pockets fully enclosed by one 州 (not 羌胡 / sea / empty west)
-    hex_zhou = fill_small_interior_holes(hex_zhou, land_ok, max_hole=120)
+    # Bridge sheet seams on land only, then force exactly one CC per 州
+    hex_zhou = keep_largest_per_id(hex_zhou, land_ok=land_ok, close_px=8)
     hex_zhou[land_ok == 0] = 0
+    hex_zhou = keep_largest_per_id(hex_zhou, land_ok=land_ok, close_px=0)
 
-    # Drop 州 hexes far from any seat of that 州 (belt-and-suspenders vs sheet rect)
-    pts = json.loads(args.points.read_text())
-    seats_by: dict[str, list[tuple[float, float]]] = defaultdict(list)
-    for z in pts["zhou"]:
-        seats_by[z["zhou"]].append((z["lon"], z["lat"]))
-    for j in pts["jun"]:
-        seats_by[j["zhou"]].append((j["lon"], j["lat"]))
-    # Per-州 seat radius (degrees²). Large western 州 get a bit more slack.
-    RAD2 = {
-        "益州": 3.2**2,
-        "凉州": 3.5**2,
-        "交州": 3.0**2,
-        "幽州": 3.0**2,
-        "荆州": 3.2**2,
-        "扬州": 3.0**2,
-    }
-    DEFAULT_RAD2 = 2.8**2
-    for name, idx in name_to_id.items():
-        seats = seats_by.get(name, [])
-        if not seats:
-            continue
-        rad2 = RAD2.get(name, DEFAULT_RAD2)
-        ys, xs = np.where(hex_zhou == idx)
-        for row, col in zip(ys, xs):
-            lon = LON_MIN + (col + 0.5) / MAP_W * (LON_MAX - LON_MIN)
-            lat = LAT_MAX - (row + 0.5) / MAP_H * (LAT_MAX - LAT_MIN)
-            if min((lon - sl) ** 2 + (lat - st) ** 2 for sl, st in seats) > rad2:
-                hex_zhou[row, col] = 0
+    mxj = jun_votes.max(axis=0)
+    hex_jun = np.where(mxj > 0, jun_votes.argmax(axis=0), 0).astype(np.uint16)
+    for jn, jid in jun_index.items():
+        zid = zhou_index.get(jun_to_zhou.get(jn, ""), 0)
+        if zid:
+            hex_jun[(hex_jun == jid) & (hex_zhou != zid)] = 0
+    hex_jun = keep_largest_per_id(hex_jun, land_ok=land_ok, close_px=3)
+    hex_jun = keep_largest_per_id(hex_jun, land_ok=land_ok, close_px=0)
 
-    counts = Counter(id_to_name[int(i)] for i in hex_zhou.ravel() if i)
+    zcounts = Counter(zhou_names[int(i)] for i in hex_zhou.ravel() if i)
+    jcounts = Counter(jun_names[int(i)] for i in hex_jun.ravel() if i)
     bin_path = args.out_hex.with_suffix(".bin")
     bin_path.write_bytes(hex_zhou.astype(np.uint8).tobytes())
-    # persist land_ok for bake
-    Path("/tmp/tan262/land_ok.bin").write_bytes(land_ok.astype(np.uint8).tobytes())
+    args.out_jun_hex.write_bytes(hex_jun.astype("<u2").tobytes())
+    args.out_polygons.write_text(json.dumps(poly_dump, ensure_ascii=False, indent=2))
     meta = {
-        "zhou_names": [""] + names,
-        "counts": dict(counts),
+        "zhou_names": zhou_names,
+        "jun_names": jun_names,
+        "counts": dict(zcounts),
+        "jun_counts_top": dict(jcounts.most_common(20)),
         "n_filled": int((hex_zhou > 0).sum()),
+        "n_jun_filled": int((hex_jun > 0).sum()),
         "n_land_ok": int(land_ok.sum()),
         "bin": str(bin_path),
-        "layout": "uint8 zhou_idx row-major 500x500",
-        "authority": "Tan-262 purple 州 boundaries",
-        "method": "per-sheet purple+distance-limited seat flood; land=coast∧¬underlay-sea; seat-radius trim",
+        "jun_bin": str(args.out_jun_hex),
+        "layout": "uint8 zhou_idx / uint16 jun_idx row-major 500x500",
+        "authority": "Tan-262 purple 州/郡 outline polygons",
+        "method": "purple pocket union → outer contour lon/lat polygon → hex; no seat-flood",
     }
     args.out_hex.write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    print(f"wrote {args.out_hex} filled={meta['n_filled']} counts={meta['counts']}")
-    missing = [n for n in CANON if counts.get(n, 0) == 0]
+    print(f"wrote {args.out_hex} filled={meta['n_filled']} jun={meta['n_jun_filled']}")
+    print("zhou", dict(zcounts))
+    missing = [n for n in CANON if zcounts.get(n, 0) == 0]
     if missing:
         print("WARNING empty 州:", missing)
     return 0
