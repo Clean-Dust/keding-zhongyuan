@@ -10,7 +10,7 @@
   },
   "zhou": {
     "source": "Sinica CCTS ad0262 digitize",
-    "method": "multi_source_BFS from 州治; brown ink barriers; distance caps",
+    "method": "multi_source_BFS from 州治; thick ink barriers + ZHOU_BBOX clips",
     "underlay": "/tmp/sinica_ad0262_z8.jpg",
     "units": 13
   },
@@ -22,7 +22,7 @@
   "xian": {
     "source": "nearest CHGIS 县治 inside 郡",
     "bin": "xian_fills.bin",
-    "units": 818
+    "units": 880
   },
   "citation": "Academia Sinica CCTS ad0262; CHGIS seats/points for seeds",
   "fidelity_note": "Hex-center sample ~6.9km; raster ink digitize not cadastral",
@@ -151,11 +151,11 @@
   "layout": "uint16 zhou_idx, uint16 jun_idx LE",
   "stats": {
     "land": 170246,
-    "zhou_filled": 82541,
-    "jun_filled": 82541,
-    "xian_filled": 82541,
-    "zhou_fill_rate_land": 0.4848,
-    "jun_fill_rate_land": 0.4848,
+    "zhou_filled": 96881,
+    "jun_filled": 95191,
+    "xian_filled": 95191,
+    "zhou_fill_rate_land": 0.5691,
+    "jun_fill_rate_land": 0.5591,
     "zhou_units": 13,
     "jun_units": 98
   },

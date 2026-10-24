@@ -33,12 +33,35 @@ WEST_CLIP = 97.8
 # Self-check samples: (lon, lat, expected_zhou)
 CHECKS = [
     (114.71, 31.02, "荆州"),  # 江夏
+    (112.54, 33.00, "荆州"),  # 南阳
+    (115.90, 28.67, "扬州"),  # 豫章 (must not be eaten by 荆州)
     (116.78, 32.58, "扬州"),  # 寿春
+    (113.47, 34.16, "豫州"),  # 颍川
     (112.60, 34.73, "司隶"),  # 雒阳
     (104.08, 30.65, "益州"),  # 成都
     (118.37, 36.86, "青州"),  # 临淄
     (115.97, 39.49, "幽州"),  # 涿
 ]
+
+# Hard lon/lat clips per 州 (prevent northern wrap / 羌胡). Not distance-cap diagonals.
+# (lon_min, lon_max, lat_min, lat_max) — None = open side
+ZHOU_BBOX: dict[str, tuple[float | None, float | None, float | None, float | None]] = {
+    # Loose clips: stop catastrophic wrap (凉州/羌胡, northern sea). Real borders = thick ink.
+    "凉州": (97.8, 110.5, 32.5, 42.8),
+    "并州": (108.0, 116.0, 34.0, 42.0),
+    "幽州": (112.0, 128.0, 37.0, 42.8),
+    "冀州": (112.0, 119.0, 34.0, 40.5),
+    "青州": (116.0, 123.5, 34.0, 39.5),
+    "兖州": (114.0, 119.5, 33.0, 37.5),
+    "徐州": (116.0, 122.0, 31.0, 35.5),
+    "豫州": (111.5, 118.5, 31.5, 35.5),
+    "司隶": (107.0, 115.5, 32.0, 37.5),
+    # 荆州 lon_max kept west of 豫章(~115.9); 江夏(~114.7) stays inside.
+    "荆州": (107.0, 115.35, 24.5, 33.8),
+    "扬州": (114.8, 122.5, 23.5, 33.8),
+    "益州": (97.8, 111.0, 21.0, 35.0),
+    "交州": (103.0, 118.5, 15.5, 26.5),
+}
 
 
 def lonlat_to_xy(lon: float, lat: float, w: int, h: int) -> tuple[int, int]:
@@ -57,30 +80,45 @@ def offset_to_lonlat(col: int, row: int) -> tuple[float, float]:
     return lon, lat
 
 
-def build_land_barrier(im: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def build_barriers(im: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Return (land_for_zhou, land_for_jun, sea).
+
+    Thick ink → 州 barriers (follow solid 州 borders; avoid dashed 郡 noise).
+    All ink (closed) → 郡 barriers.
+    """
     r = im[:, :, 0].astype(np.float32)
     g = im[:, :, 1].astype(np.float32)
     b = im[:, :, 2].astype(np.float32)
     lum = (r + g + b) / 3.0
-    sea = lum < 80
-    paper = (r > 210) & (g > 195) & (b > 155) & (lum > 185)
+    sea = lum < 85
+    paper = (r > 205) & (g > 190) & (b > 150) & (lum > 180)
     bluish = (b > r + 8) & (b > g + 2)
-    # Admin ink (brown/grey lines) — 州 thick + 郡 thin
     ink = (
         (~sea)
         & (~paper)
         & (~bluish)
-        & (lum < 170)
-        & (lum > 35)
-        & (r >= g - 12)
-        & ((r - b) > 10)
+        & (lum < 175)
+        & (lum > 40)
+        & (r >= g - 10)
+        & ((r - b) > 12)
     )
-    dark = (~sea) & (~bluish) & (lum < 105) & (lum > 20) & (r >= g - 18)
-    lines = ndimage.binary_closing(ink | dark, iterations=1)
-    lines = ndimage.binary_dilation(lines, iterations=1)
-    barrier = sea | lines
-    land = (~barrier) & (lum > 105)
-    return land.astype(bool), barrier.astype(bool)
+    dark = (~sea) & (~bluish) & (lum < 115) & (lum > 25) & (r >= g - 18)
+    grad = ndimage.gaussian_gradient_magnitude(lum, 1.0)
+    edge = (grad > 8) & (~sea) & (~bluish) & (lum < 180) & (r >= g - 5) & ((r - b) > 8)
+    raw = ink | dark | edge
+    # Thick 州 strokes: high local ink density
+    dens = ndimage.uniform_filter(raw.astype(np.float32), size=7)
+    thick = raw & (dens > 0.12)
+    thick = ndimage.binary_closing(thick, iterations=2)
+    thick = ndimage.binary_dilation(thick, iterations=2)
+    # All lines for 郡 (close dashes)
+    thin = ndimage.binary_closing(raw, iterations=2)
+    thin = ndimage.binary_dilation(thin, iterations=2)
+    zhou_barrier = sea | thick
+    jun_barrier = sea | thin | thick
+    land_zhou = (~zhou_barrier) & (lum > 100)
+    land_jun = (~jun_barrier) & (lum > 100)
+    return land_zhou.astype(bool), land_jun.astype(bool), sea.astype(bool)
 
 
 def nudge(land: np.ndarray, x: int, y: int, max_r: int = 80) -> tuple[int, int] | None:
@@ -108,17 +146,45 @@ def multi_source(
     land: np.ndarray,
     seeds: list[tuple[int, int, int]],
     w: int,
+    h_img: int,
     allowed: np.ndarray | None = None,
-    max_dist: dict[int, float] | None = None,
+    lid_names: dict[int, str] | None = None,
 ) -> np.ndarray:
-    h, ww = land.shape
-    labels = np.zeros((h, ww), dtype=np.int16)
-    dist = np.full((h, ww), np.float32(1e9))
+    """Nearest-seed flood; barriers = ~land. Optional per-州 bbox clips (no geodesic caps)."""
+    hh, ww = land.shape
+    labels = np.zeros((hh, ww), dtype=np.int16)
+    dist = np.full((hh, ww), np.float32(1e9))
     q: deque[tuple[int, int, int, float]] = deque()
+
+    def in_clip(nx: int, ny: int, lid: int) -> bool:
+        if xy_to_lon(nx, w) < WEST_CLIP:
+            return False
+        if not lid_names:
+            return True
+        name = lid_names.get(lid)
+        if not name or name not in ZHOU_BBOX:
+            return True
+        lo0, lo1, la0, la1 = ZHOU_BBOX[name]
+        lon = LON_MIN + (nx + 0.5) / w * (LON_MAX - LON_MIN)
+        lat = LAT_MAX - (ny + 0.5) / h_img * (LAT_MAX - LAT_MIN)
+        if lo0 is not None and lon < lo0:
+            return False
+        if lo1 is not None and lon > lo1:
+            return False
+        if la0 is not None and lat < la0:
+            return False
+        if la1 is not None and lat > la1:
+            return False
+        return True
+
     for x, y, lid in seeds:
+        if not (0 <= x < ww and 0 <= y < hh):
+            continue
         if not land[y, x]:
             continue
         if allowed is not None and not allowed[y, x]:
+            continue
+        if not in_clip(x, y, lid):
             continue
         labels[y, x] = lid
         dist[y, x] = 0.0
@@ -129,17 +195,15 @@ def multi_source(
             continue
         for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
             nx, ny = x + dx, y + dy
-            if nx < 0 or ny < 0 or nx >= ww or ny >= h:
+            if nx < 0 or ny < 0 or nx >= ww or ny >= hh:
                 continue
             if not land[ny, nx]:
                 continue
             if allowed is not None and not allowed[ny, nx]:
                 continue
-            if xy_to_lon(nx, w) < WEST_CLIP:
+            if not in_clip(nx, ny, lid):
                 continue
             nd = d + 1.0
-            if max_dist and nd > max_dist.get(lid, 1e9):
-                continue
             if labels[ny, nx] == 0:
                 labels[ny, nx] = lid
                 dist[ny, nx] = nd
@@ -147,11 +211,33 @@ def multi_source(
             elif labels[ny, nx] == lid and nd < dist[ny, nx]:
                 dist[ny, nx] = nd
                 q.append((nx, ny, lid, nd))
-            elif labels[ny, nx] != lid and nd + 2.0 < dist[ny, nx]:
+            elif labels[ny, nx] != lid and nd + 1.5 < dist[ny, nx]:
                 labels[ny, nx] = lid
                 dist[ny, nx] = nd
                 q.append((nx, ny, lid, nd))
     return labels
+
+
+def fill_small_holes(labels: np.ndarray, land: np.ndarray, max_hole: int = 400) -> np.ndarray:
+    """Assign unlabeled land holes fully surrounded by one label."""
+    out = labels.copy()
+    unlabeled = land & (out == 0)
+    structure = np.ones((3, 3), dtype=bool)
+    labeled, n = ndimage.label(unlabeled, structure=structure)
+    for i in range(1, n + 1):
+        ys, xs = np.where(labeled == i)
+        if len(ys) == 0 or len(ys) > max_hole:
+            continue
+        # neighbors
+        neigh = set()
+        for y, x in zip(ys, xs):
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ny, nx = y + dy, x + dx
+                if 0 <= ny < out.shape[0] and 0 <= nx < out.shape[1] and out[ny, nx] > 0:
+                    neigh.add(int(out[ny, nx]))
+        if len(neigh) == 1:
+            out[labeled == i] = next(iter(neigh))
+    return out
 
 
 def sample_label(labels: np.ndarray, lon: float, lat: float, w: int, h: int) -> int:
@@ -172,8 +258,8 @@ def sample_label(labels: np.ndarray, lon: float, lat: float, w: int, h: int) -> 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--underlay", type=Path, default=Path("/tmp/sinica_ad0262_z9_eq.png"))
-    ap.add_argument("--fallback", type=Path, default=Path("/tmp/sinica_ad0262_z8.jpg"))
+    ap.add_argument("--underlay", type=Path, default=Path("/tmp/sinica_ad0262_z8.jpg"))
+    ap.add_argument("--fallback", type=Path, default=Path("data/sinica_ad0262_underlay.jpg"))
     ap.add_argument("--points", type=Path, default=Path("data/admin_points.json"))
     ap.add_argument("--coast", type=Path, default=Path("data/coast_mask.bin"))
     ap.add_argument("--out-bin", type=Path, default=Path("data/zhou_jun_fills.bin"))
@@ -190,40 +276,24 @@ def main() -> int:
     print(f"underlay {src}")
     im = np.array(Image.open(src).convert("RGB"))
     h, w, _ = im.shape
-    land, barrier = build_land_barrier(im)
-    print(f"  size={w}x{h} land={land.mean():.3f} barrier={barrier.mean():.3f}")
+    land_zhou, land_jun, _sea = build_barriers(im)
+    print(
+        f"  size={w}x{h} land_zhou={land_zhou.mean():.3f} land_jun={land_jun.mean():.3f}"
+    )
 
     pts = json.loads(args.points.read_text(encoding="utf-8"))
     zhou_pts = pts["zhou"]
     jun_pts = pts["jun"]
     xian_pts = pts["xian"]
 
-    # --- 州 flood ---
+    # --- 州 flood (thick barriers + bbox clips; no geodesic distance caps) ---
     zhou_table = [""]
     zhou_index: dict[str, int] = {}
     zhou_seeds: list[tuple[int, int, int]] = []
-    deg_per_px = ((LON_MAX - LON_MIN) / w + (LAT_MAX - LAT_MIN) / h) / 2.0
-    # Generous caps by 州 size (degrees → px); large western/southern 州 get more
-    ZHOU_RDEG = {
-        "司隶": 5.5,
-        "豫州": 5.0,
-        "冀州": 5.0,
-        "兖州": 4.5,
-        "徐州": 4.5,
-        "青州": 4.5,
-        "荆州": 7.5,
-        "扬州": 8.0,
-        "益州": 10.0,
-        "凉州": 9.0,
-        "并州": 5.5,
-        "幽州": 7.0,
-        "交州": 8.5,
-    }
-    max_dist: dict[int, float] = {}
     for zp in zhou_pts:
         name = zp["zhou"]
         xy = lonlat_to_xy(zp["lon"], zp["lat"], w, h)
-        n = nudge(land, *xy)
+        n = nudge(land_zhou, *xy)
         if not n:
             print(f"  FAIL 州 seed {name}")
             continue
@@ -232,23 +302,53 @@ def main() -> int:
             zhou_table.append(name)
         zid = zhou_index[name]
         zhou_seeds.append((n[0], n[1], zid))
-        max_dist[zid] = ZHOU_RDEG.get(name, 6.0) / deg_per_px
-        print(f"  州 seed {name} @ {n} rdeg={ZHOU_RDEG.get(name)}")
+        print(f"  州 seed {name} @ {n}")
 
-    # Always plant a second 荆州 seed near 江夏 so that corridor is not eaten by 扬州.
+    # Extra 荆州 seeds: 江夏 corridor + 南阳 (north of thick ink that blocks 江陵 seed).
     if "荆州" in zhou_index:
         zid = zhou_index["荆州"]
-        for lon, lat in ((114.5, 30.5), (114.7, 31.0), (113.2, 30.2)):
+        for lon, lat in (
+            (114.5, 30.5),
+            (114.7, 31.0),
+            (113.2, 30.2),
+            (112.54, 33.00),  # 南阳
+            (112.2, 32.4),
+            (113.0, 32.2),
+        ):
             xy = lonlat_to_xy(lon, lat, w, h)
-            n = nudge(land, *xy, 100)
+            n = nudge(land_zhou, *xy, 100)
             if n:
                 zhou_seeds.append((n[0], n[1], zid))
                 print(f"  州 extra 荆州 seed @ {n} near ({lon},{lat})")
 
-    zhou_labels = multi_source(land, zhou_seeds, w, max_dist=max_dist)
-    print(f"  州 labeled frac={(zhou_labels > 0).sum() / max(land.sum(), 1):.3f} units={len(zhou_table)-1}")
+    # Extra 扬州 seeds so 豫章/庐江 are not eaten by 荆州 eastward flood.
+    if "扬州" in zhou_index:
+        zid = zhou_index["扬州"]
+        for lon, lat in ((115.90, 28.67), (116.2, 29.5), (116.5, 31.0)):
+            xy = lonlat_to_xy(lon, lat, w, h)
+            n = nudge(land_zhou, *xy, 100)
+            if n:
+                zhou_seeds.append((n[0], n[1], zid))
+                print(f"  州 extra 扬州 seed @ {n} near ({lon},{lat})")
 
-    # Self-check
+    # 颍川 is 豫州; 司隶 flood otherwise claims it.
+    if "豫州" in zhou_index:
+        zid = zhou_index["豫州"]
+        for lon, lat in ((113.47, 34.16), (114.0, 33.8)):
+            xy = lonlat_to_xy(lon, lat, w, h)
+            n = nudge(land_zhou, *xy, 100)
+            if n:
+                zhou_seeds.append((n[0], n[1], zid))
+                print(f"  州 extra 豫州 seed @ {n} near ({lon},{lat})")
+
+    lid_names = {i: zhou_table[i] for i in range(1, len(zhou_table))}
+    zhou_labels = multi_source(land_zhou, zhou_seeds, w, h, lid_names=lid_names)
+    zhou_labels = fill_small_holes(zhou_labels, land_zhou, max_hole=800)
+    print(
+        f"  州 labeled frac={(zhou_labels > 0).sum() / max(land_zhou.sum(), 1):.3f} "
+        f"units={len(zhou_table)-1}"
+    )
+
     fails = []
     for lon, lat, expect in CHECKS:
         lid = sample_label(zhou_labels, lon, lat, w, h)
@@ -258,7 +358,7 @@ def main() -> int:
         if not ok:
             fails.append((expect, got, lon, lat))
 
-    # --- 郡 flood inside each 州 ---
+    # --- 郡 flood inside each 州 (thin+thick barriers) ---
     jun_table = [""]
     jun_index: dict[str, int] = {}
     jun_to_zhou_idx: dict[int, int] = {}
@@ -283,26 +383,26 @@ def main() -> int:
             jid = jun_index[jname]
             jun_to_zhou_idx[jid] = zid
             xy = lonlat_to_xy(jp["lon"], jp["lat"], w, h)
-            n = nudge(land & mask if mask.any() else land, *xy, 60)
+            grow_land = land_jun & mask if mask.any() else land_jun
+            n = nudge(grow_land, *xy, 60)
             if not n:
-                n = nudge(land, *xy, 80)
+                n = nudge(land_jun, *xy, 80)
             if not n:
                 continue
-            # If seed outside 州 mask, still plant but only grow in mask
             seeds.append((n[0], n[1], jid))
         if not seeds:
             continue
-        # Allow land inside 州 OR immediately at seed
         allowed = mask.copy()
         for x, y, _jid in seeds:
             allowed[y, x] = True
-        part = multi_source(land, seeds, w, allowed=allowed)
-        # Merge into jun_labels where inside this 州
+        part = multi_source(land_jun, seeds, w, h, allowed=allowed)
         sel = (part > 0) & mask
         jun_labels[sel] = part[sel]
         print(f"  郡 in {zhou_name}: seeds={len(seeds)} labeled={(part > 0).sum()}")
-
-    print(f"  jun units={len(jun_table)-1} labeled frac={(jun_labels > 0).sum() / max(land.sum(), 1):.3f}")
+    print(
+        f"  jun units={len(jun_table)-1} "
+        f"labeled frac={(jun_labels > 0).sum() / max(land_jun.sum(), 1):.3f}"
+    )
 
     # Consistency: where jun labeled, zhou should match parent; fill zhou holes from jun
     for y in range(h):
@@ -445,7 +545,7 @@ def main() -> int:
         },
         "zhou": {
             "source": "Sinica CCTS ad0262 digitize",
-            "method": "multi_source_BFS from 州治; brown ink barriers; distance caps",
+            "method": "multi_source_BFS from 州治; thick ink barriers + ZHOU_BBOX clips",
             "underlay": str(src),
             "units": len(zhou_table) - 1,
         },
@@ -488,7 +588,7 @@ def main() -> int:
         "jun_hex_counts": dict(jun_counts.most_common(30)),
         "xian_units": len(xian_table) - 1,
         "self_check": meta["self_check"],
-        "missing_zhou": [z for z in ZHOU_RDEG if zhou_counts.get(z, 0) == 0],
+        "missing_zhou": [z for z in ZHOU_BBOX if zhou_counts.get(z, 0) == 0],
     }
     args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
 
