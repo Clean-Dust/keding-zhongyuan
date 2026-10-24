@@ -68,7 +68,8 @@ def main() -> int:
     g = base[:, :, 1].astype(np.float32)
     b = base[:, :, 2].astype(np.float32)
     lum = (r + g + b) / 3.0
-    sea = (lum < 105) | ((b > r + 12) & (b > g + 8) & (lum < 165))
+    # Dark open water only — light blue grid/shelf on land must not punch holes.
+    sea = (lum < 95) | ((b > r + 20) & (b > g + 15) & (lum < 140))
     painted = (zhou_u > 0) & (~sea)
     solid[painted] = pal[zhou_u[painted]]
 

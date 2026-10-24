@@ -106,31 +106,35 @@ COAST_CLIP_ZHOU = {
 }
 
 
-def rasterize_sheet_sea_hex(path: Path, g: dict, scale: float) -> np.ndarray:
-    """500² mask of hexes that fall on sheet sea ink."""
+def underlay_sea_hex(underlay: Path) -> np.ndarray:
+    """500² mask: hex center samples dark / blue sea on the Sinica underlay."""
+    img = np.array(Image.open(underlay).convert("RGB").resize((MAP_W, MAP_H), Image.Resampling.BILINEAR))
+    r = img[:, :, 0].astype(np.float32)
+    g = img[:, :, 1].astype(np.float32)
+    b = img[:, :, 2].astype(np.float32)
+    lum = (r + g + b) / 3.0
+    # Strict open-water only (not light grid blues on land)
+    sea = (lum < 100) | ((b > r + 18) & (b > g + 12) & (lum < 145))
+    return sea.astype(np.uint8)
+
+
+def hex_centers_on_sheet_sea(
+    mask: np.ndarray, path: Path, g: dict
+) -> np.ndarray:
+    """Among mask hexes, True where the hex center samples sheet sea (no dilate)."""
     im = np.array(Image.open(path).convert("RGB"))
-    small = cv2.resize(
-        im, (max(1, int(im.shape[1] * scale)), max(1, int(im.shape[0] * scale))), interpolation=cv2.INTER_AREA
-    )
-    sea = sheet_sea_coast(small).astype(np.uint8)
-    # Dilate so shoreline-straddling / upsampled hexes stay sea-clipped
-    sea = cv2.dilate(sea, np.ones((5, 5), np.uint8), iterations=2)
-    out = np.zeros((MAP_H, MAP_W), dtype=np.uint8)
-    ys, xs = np.where(sea > 0)
-    for y, x in zip(ys, xs):
-        lon = g["lon_a"] * (x / scale) + g["lon_b"]
-        lat = g["lat_c"] * (y / scale) + g["lat_d"]
-        col = int((lon - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W)
-        row = int((LAT_MAX - lat) / (LAT_MAX - LAT_MIN) * MAP_H)
-        if 0 <= col < MAP_W and 0 <= row < MAP_H:
+    sea = sheet_sea_coast(im)
+    h, w = sea.shape
+    out = np.zeros_like(mask, dtype=np.uint8)
+    ys, xs = np.where(mask > 0)
+    for row, col in zip(ys, xs):
+        lon = LON_MIN + (col + 0.5) / MAP_W * (LON_MAX - LON_MIN)
+        lat = LAT_MAX - (row + 0.5) / MAP_H * (LAT_MAX - LAT_MIN)
+        x = (lon - g["lon_b"]) / g["lon_a"]
+        y = (lat - g["lat_d"]) / g["lat_c"]
+        ix, iy = int(round(x)), int(round(y))
+        if 0 <= ix < w and 0 <= iy < h and sea[iy, ix]:
             out[row, col] = 1
-    # Also mark hexes whose 3×3 neighborhood is mostly sheet-sea (coast fringe)
-    if out.any():
-        near = cv2.dilate(out, np.ones((3, 3), np.uint8), iterations=1)
-        # count sea neighbors
-        sea_n = cv2.filter2D(out.astype(np.float32), -1, np.ones((3, 3), np.float32))
-        out = ((out > 0) | (sea_n >= 5)).astype(np.uint8)
-        _ = near  # kept for clarity / future land-gate
     return out
 
 
@@ -140,9 +144,19 @@ def clip_zhou_to_sheet_coast(
     sheets: Path,
     georef: dict,
     scale: float = 0.5,
+    underlay: Path | None = None,
 ) -> dict[str, int]:
-    """Clear 交州/幽州 hexes that land on their primary sheet's sea. Other 州 untouched."""
+    """Clip 交州/幽州 to coastline: drop hexes whose *center* is sea.
+
+    Keeps one connected land CC per 州 (drops offshore specks) and re-fills
+    true interior holes so the solid outline is not Swiss-cheesed. Other 州
+    are never modified.
+    """
+    del scale  # center test uses full-res sheet; scale unused
     removed: dict[str, int] = {}
+    under_sea = None
+    if underlay is not None and Path(underlay).is_file():
+        under_sea = underlay_sea_hex(Path(underlay))
     for zname, sheet_name in COAST_CLIP_ZHOU.items():
         zid = zhou_index.get(zname)
         if not zid:
@@ -152,19 +166,39 @@ def clip_zhou_to_sheet_coast(
         if not g or not g.get("ok") or not path.is_file():
             print(f"coast-clip skip {zname}: missing sheet/georef", flush=True)
             continue
-        sea_hex = rasterize_sheet_sea_hex(path, g, scale)
-        sel = (hex_zhou == zid) & (sea_hex > 0)
+        before = hex_zhou == zid
+        if not before.any():
+            removed[zname] = 0
+            continue
+        # Sea test once on the solid outline — do not re-scan after hole fill
+        # (re-testing punches Swiss cheese back into the land mass).
+        sea_hex = hex_centers_on_sheet_sea(before.astype(np.uint8), path, g)
+        if under_sea is not None:
+            sea_hex = ((sea_hex > 0) | ((before) & (under_sea > 0))).astype(np.uint8)
+        sel = before & (sea_hex > 0)
         n = int(sel.sum())
         hex_zhou[sel] = 0
-        # Drop only tiny crumbs after sea cut; keep peninsulas / island fragments
         m = (hex_zhou == zid).astype(np.uint8)
         if m.any():
-            ncc, lab, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=4)
-            for ci in range(1, ncc):
-                if int(stats[ci, cv2.CC_STAT_AREA]) < 8:
-                    hex_zhou[lab == ci] = 0
+            # One connected land region — drops offshore specks only
+            core = largest_connected(m).astype(np.uint8)
+            hex_zhou[(hex_zhou == zid) & (core == 0)] = 0
+            # Refill morphological interior holes (land voids), never the sea set we removed
+            filled = _fill_holes_binary(core)
+            hole = (filled > 0) & (core == 0) & (sea_hex == 0)
+            hex_zhou[hole] = zid
+            core2 = largest_connected((hex_zhou == zid).astype(np.uint8)).astype(np.uint8)
+            hex_zhou[(hex_zhou == zid) & (core2 == 0)] = 0
         removed[zname] = n
-        print(f"coast-clip {zname}: removed {n} sea hexes → {int((hex_zhou == zid).sum())}", flush=True)
+        ncc = cv2.connectedComponentsWithStats((hex_zhou == zid).astype(np.uint8), 4)[0] - 1
+        holes_left = int(
+            ((_fill_holes_binary((hex_zhou == zid).astype(np.uint8)) > 0) & (hex_zhou != zid)).sum()
+        )
+        print(
+            f"coast-clip {zname}: removed {n} sea-center hexes → {int((hex_zhou == zid).sum())} "
+            f"(CC={ncc}, holes={holes_left})",
+            flush=True,
+        )
     return removed
 
 
@@ -680,7 +714,9 @@ def main() -> int:
             hex_zhou[sel] = zid
 
     # 交州/幽州: drop hexes that fall on sheet sea ink (coastline clip)
-    clip_zhou_to_sheet_coast(hex_zhou, zhou_index, args.sheets, georef, args.scale)
+    clip_zhou_to_sheet_coast(
+        hex_zhou, zhou_index, args.sheets, georef, args.scale, underlay=under
+    )
 
     mxj = jun_votes.max(axis=0)
     hex_jun = np.where(mxj > 0, jun_votes.argmax(axis=0), 0).astype(np.uint16)
